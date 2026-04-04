@@ -1,0 +1,384 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: xunjianbao-mysql-prod
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_secure_password}
+      MYSQL_DATABASE: xunjianbao
+      MYSQL_USER: ${MYSQL_USER:-xunjianbao}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secure_database_password}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+      - ./config/mysql/conf.d:/etc/mysql/conf.d:ro
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --max_connections=500
+      - --innodb_buffer_pool_size=1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: xunjianbao-redis-prod
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_secure_password} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_prod:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  backend:
+    image: ghcr.io/${IMAGE_REPO:-your-org}/xunjianbao-backend:${IMAGE_TAG:-latest}
+    container_name: xunjianbao-backend-prod
+    restart: unless-stopped
+    ports:
+      - "8094:8094"
+    environment:
+      DATABASE_URL: ${MYSQL_USER:-xunjianbao}:${MYSQL_PASSWORD:-change_password}@tcp(mysql:3306)/xunjianbao?charset=utf8mb4&parseTime=True&loc=Local
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-at-least-32-characters-long-for-security}
+      PORT: "8094"
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_secure_password}@redis:6379
+      OPENCLAW_URL: ${OPENCLAW_URL:-http://openclaw:8096}
+      OPENCLAW_TOKEN: ${OPENCLAW_TOKEN:-}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai:8095}
+      YOLO_SERVICE_URL: ${YOLO_SERVICE_URL:-http://yolo:8097}
+      DEPLOY_ENV: production
+      LOG_LEVEL: info
+      METRICS_PORT: "9090"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8094/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        tag: "xunjianbao-backend"
+    volumes:
+      - ./logs/backend:/var/log/backend
+
+  ai:
+    image: ghcr.io/${IMAGE_REPO:-your-org}/xunjianbao-ai-service:${IMAGE_TAG:-latest}
+    container_name: xunjianbao-ai-prod
+    restart: unless-stopped
+    ports:
+      - "8095:8095"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-}
+      PORT: "8095"
+      DEPLOY_ENV: production
+      LOG_LEVEL: info
+      MODEL_CACHE_SIZE: "10"
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8095/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        tag: "xunjianbao-ai"
+    volumes:
+      - ./logs/ai:/var/log/ai
+      - ai_model_cache:/app/models
+
+  yolo:
+    image: ghcr.io/${IMAGE_REPO:-your-org}/xunjianbao-yolo-service:${IMAGE_TAG:-latest}
+    container_name: xunjianbao-yolo-prod
+    restart: unless-stopped
+    ports:
+      - "8097:8097"
+    environment:
+      PORT: "8097"
+      DEVICE: ${YOLO_DEVICE:-cpu}
+      DEPLOY_ENV: production
+      LOG_LEVEL: info
+      MODEL_PATH: "/app/models/yolov8n.pt"
+      CONFIDENCE_THRESHOLD: "0.5"
+    volumes:
+      - yolo_models_prod:/app/models
+      - ./logs/yolo:/var/log/yolo
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8097/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 2G
+          cpus: '1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        tag: "xunjianbao-yolo"
+
+  openclaw:
+    image: openclaw/openclaw:latest
+    container_name: xunjianbao-openclaw-prod
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    environment:
+      PORT: "8096"
+      TOKEN: ${OPENCLAW_TOKEN:-}
+      DEPLOY_ENV: production
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        tag: "xunjianbao-openclaw"
+    volumes:
+      - ./logs/openclaw:/var/log/openclaw
+
+  frontend:
+    image: ghcr.io/${IMAGE_REPO:-your-org}/xunjianbao-frontend:${IMAGE_TAG:-latest}
+    container_name: xunjianbao-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      DEPLOY_ENV: production
+      API_BASE_URL: ${API_BASE_URL:-http://backend:8094}
+      WEBSOCKET_URL: ${WEBSOCKET_URL:-ws://backend:8094/ws}
+    networks:
+      - xunjianbao-network-prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+        tag: "xunjianbao-frontend"
+    volumes:
+      - ./logs/frontend:/var/log/nginx
+
+  # 监控服务
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: xunjianbao-prometheus-prod
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data_prod:/prometheus
+    networks:
+      - xunjianbao-network-prod
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: xunjianbao-grafana-prod
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data_prod:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - xunjianbao-network-prod
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # 日志收集
+  loki:
+    image: grafana/loki:latest
+    container_name: xunjianbao-loki-prod
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data_prod:/loki
+      - ./config/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    networks:
+      - xunjianbao-network-prod
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: xunjianbao-promtail-prod
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - ./logs:/var/log/xunjianbao:ro
+      - ./config/loki/promtail-config.yaml:/etc/promtail/config.yaml:ro
+    networks:
+      - xunjianbao-network-prod
+    command: -config.file=/etc/promtail/config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+networks:
+  xunjianbao-network-prod:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+volumes:
+  mysql_data_prod:
+    driver: local
+  redis_data_prod:
+    driver: local
+  yolo_models_prod:
+    driver: local
+  ai_model_cache:
+    driver: local
+  prometheus_data_prod:
+    driver: local
+  grafana_data_prod:
+    driver: local
+  loki_data_prod:
+    driver: local

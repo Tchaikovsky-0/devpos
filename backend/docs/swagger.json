@@ -1,0 +1,740 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "巡检宝 API",
+    "description": "面向重工业企业的智能监控平台 API\n\n## 认证\n所有受保护的 API 需要在 Header 中携带 JWT Token:\n```\nAuthorization: Bearer <token>\n```",
+    "version": "1.0.0",
+    "contact": {
+      "name": "巡检宝技术支持"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8094",
+      "description": "本地开发服务器"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "健康检查",
+        "tags": ["系统"],
+        "responses": {
+          "200": {
+            "description": "服务正常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {"type": "string", "example": "ok"},
+                    "version": {"type": "string", "example": "1.0.0"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "用户登录",
+        "tags": ["认证"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": {"type": "string", "description": "用户名或邮箱"},
+                  "password": {"type": "string", "description": "密码"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {"type": "integer", "example": 200},
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "token": {"type": "string"},
+                        "user": {"$ref": "#/components/schemas/User"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "用户注册",
+        "tags": ["认证"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password", "email"],
+                "properties": {
+                  "username": {"type": "string", "minLength": 3, "maxLength": 64},
+                  "password": {"type": "string", "minLength": 6},
+                  "email": {"type": "string", "format": "email"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "注册成功"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "用户登出",
+        "tags": ["认证"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "登出成功"
+          }
+        }
+      }
+    },
+    "/api/v1/user/info": {
+      "get": {
+        "summary": "获取当前用户信息",
+        "tags": ["用户"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {"type": "integer"},
+                    "username": {"type": "string"},
+                    "email": {"type": "string"},
+                    "avatar": {"type": "string"},
+                    "role": {"type": "string"},
+                    "tenant_id": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/streams": {
+      "get": {
+        "summary": "获取视频流列表",
+        "tags": ["视频流"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+          {"name": "page_size", "in": "query", "schema": {"type": "integer", "default": 20}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "post": {
+        "summary": "创建视频流",
+        "tags": ["视频流"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/Stream"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/api/v1/streams/{id}": {
+      "get": {
+        "summary": "获取视频流详情",
+        "tags": ["视频流"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "put": {
+        "summary": "更新视频流",
+        "tags": ["视频流"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/Stream"}
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      },
+      "delete": {
+        "summary": "删除视频流",
+        "tags": ["视频流"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "summary": "获取告警列表",
+        "tags": ["告警"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+          {"name": "page_size", "in": "query", "schema": {"type": "integer", "default": 20}},
+          {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["pending", "resolved", "false_alarm"]}},
+          {"name": "level", "in": "query", "schema": {"type": "string", "enum": ["INFO", "WARN", "CRIT", "OFFLINE"]}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "post": {
+        "summary": "创建告警",
+        "tags": ["告警"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/Alert"}
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "创建成功"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{id}": {
+      "get": {
+        "summary": "获取告警详情",
+        "tags": ["告警"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      },
+      "put": {
+        "summary": "更新告警",
+        "tags": ["告警"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {"type": "string", "enum": ["pending", "resolved", "false_alarm"]},
+                  "note": {"type": "string"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{id}/resolve": {
+      "post": {
+        "summary": "解决告警",
+        "tags": ["告警"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {"type": "string", "description": "处理备注"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "解决成功"
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/stats": {
+      "get": {
+        "summary": "获取仪表盘统计",
+        "tags": ["仪表盘"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_streams": {"type": "integer"},
+                    "online_streams": {"type": "integer"},
+                    "total_alerts": {"type": "integer"},
+                    "pending_alerts": {"type": "integer"},
+                    "resolved_today": {"type": "integer"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/health": {
+      "get": {
+        "summary": "获取设备健康统计",
+        "tags": ["仪表盘"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/center/models": {
+      "get": {
+        "summary": "获取AI模型列表",
+        "tags": ["AI中心"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {"type": "string"},
+                          "name": {"type": "string"},
+                          "status": {"type": "string"}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/center/detect": {
+      "post": {
+        "summary": "发送图片进行AI检测",
+        "tags": ["AI中心"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["image"],
+                "properties": {
+                  "image": {"type": "string", "description": "Base64编码的图片"},
+                  "type": {"type": "string", "enum": ["fire", "intrusion", "defect"], "description": "检测类型"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "检测成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "detections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {"type": "string"},
+                          "confidence": {"type": "number"},
+                          "bbox": {"type": "array", "items": {"type": "number"}}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/oncall/analyze/{alert_id}": {
+      "post": {
+        "summary": "手动触发告警分析",
+        "tags": ["AI值班分析师"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "alert_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "分析已触发"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/oncall/analysis/{alert_id}": {
+      "get": {
+        "summary": "获取告警分析结果",
+        "tags": ["AI值班分析师"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "alert_id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {"type": "string"},
+                    "severity": {"type": "string"},
+                    "likely_cause": {"type": "string"},
+                    "confidence": {"type": "number"},
+                    "auto_action": {"type": "string"},
+                    "need_human_confirm": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/reports/generate": {
+      "post": {
+        "summary": "生成报告",
+        "tags": ["报告生成"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {"type": "string", "enum": ["daily", "weekly", "monthly", "incident"], "description": "报告类型"},
+                  "date_range_start": {"type": "string", "format": "date", "description": "开始日期"},
+                  "date_range_end": {"type": "string", "format": "date", "description": "结束日期"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "报告生成中"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/reports": {
+      "get": {
+        "summary": "获取报告列表",
+        "tags": ["报告生成"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+          {"name": "page_size", "in": "query", "schema": {"type": "integer", "default": 20}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/reports/{id}": {
+      "get": {
+        "summary": "获取报告详情",
+        "tags": ["报告生成"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/qa/chat": {
+      "post": {
+        "summary": "智能运维问答",
+        "tags": ["智能问答"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["question"],
+                "properties": {
+                  "question": {"type": "string", "description": "自然语言问题"},
+                  "type": {"type": "string", "enum": ["query_stat", "knowledge_qa", "operation", "general"], "description": "问题类型"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "answer": {"type": "string"},
+                    "intent": {"type": "string"},
+                    "sql": {"type": "string", "description": "如涉及查询，显示生成的SQL"},
+                    "data": {"description": "如涉及查询，显示查询结果"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/config": {
+      "get": {
+        "summary": "获取AI配置",
+        "tags": ["AI配置"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "chat_model": {"type": "string"},
+                    "analysis_model": {"type": "string"},
+                    "report_model": {"type": "string"},
+                    "enable_auto_analyze": {"type": "boolean"},
+                    "enable_auto_report": {"type": "boolean"},
+                    "enable_nl2sql": {"type": "boolean"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "更新AI配置",
+        "tags": ["AI配置"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chat_model": {"type": "string"},
+                  "analysis_model": {"type": "string"},
+                  "report_model": {"type": "string"},
+                  "enable_auto_analyze": {"type": "boolean"},
+                  "enable_auto_report": {"type": "boolean"},
+                  "enable_nl2sql": {"type": "boolean"}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功"
+          }
+        }
+      }
+    },
+    "/api/v1/ai/health/predict": {
+      "get": {
+        "summary": "设备健康预测",
+        "tags": ["设备健康"],
+        "security": [{"BearerAuth": []}],
+        "parameters": [
+          {"name": "device_id", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "device_id": {"type": "string"},
+                    "health_score": {"type": "number"},
+                    "predicted_failures": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "component": {"type": "string"},
+                          "probability": {"type": "number"},
+                          "days_until_failure": {"type": "integer"}
+                        }
+                      }
+                    },
+                    "recommendations": {"type": "array", "items": {"type": "string"}}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "username": {"type": "string"},
+          "email": {"type": "string"},
+          "avatar": {"type": "string"},
+          "role": {"type": "string"},
+          "tenant_id": {"type": "string"}
+        }
+      },
+      "Stream": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["drone", "camera", "recording", "rtsp", "webrtc"]},
+          "status": {"type": "string", "enum": ["online", "offline", "warning", "error"]},
+          "rtsp_url": {"type": "string"},
+          "location": {"type": "string"}
+        }
+      },
+      "Alert": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "level": {"type": "string", "enum": ["INFO", "WARN", "CRIT", "OFFLINE"]},
+          "type": {"type": "string"},
+          "title": {"type": "string"},
+          "message": {"type": "string"},
+          "stream_id": {"type": "integer"},
+          "status": {"type": "string", "enum": ["pending", "resolved", "false_alarm"]},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    }
+  }
+}

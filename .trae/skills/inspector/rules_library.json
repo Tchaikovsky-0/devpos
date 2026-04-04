@@ -1,0 +1,384 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-04-02",
+  "total_rules": 15,
+  "categories": {
+    "permanent_prohibition": {
+      "name": "永久性禁止规则",
+      "priority": "P0",
+      "description": "绝对不可违反的红线规则",
+      "rules": [
+        {
+          "id": "P0-001",
+          "name": "硬编码敏感信息",
+          "detection": {
+            "patterns": [
+              "(?i)(password|secret|api_key|token)\\s*[=:]\\s*['\"][^'\"]{3,}['\"]",
+              "(?i)(private_key|privatekey|access_token)\\s*[=:]\\s*['\"]"
+            ],
+            "file_types": ["*.ts", "*.js", "*.py", "*.go", "*.java", "*.yaml", "*.json"],
+            "exclude_comments": true
+          },
+          "severity": "CRITICAL",
+          "action": "immediate_stop",
+          "fix_template": "使用环境变量: process.env.{KEY_NAME}",
+          "examples": {
+            "violation": "const password = 'admin123';",
+            "correct": "const password = process.env.DB_PASSWORD;"
+          }
+        },
+        {
+          "id": "P0-002",
+          "name": "未验证就断言",
+          "detection": {
+            "patterns": [
+              "(肯定|一定|绝对|毫无疑问).{0,20}(存在|是|就是|绝对)",
+              "我确定.{0,30}(文件|函数|路径|API)"
+            ],
+            "context": "必须标注信息来源，无验证时使用[推测]"
+          },
+          "severity": "CRITICAL",
+          "action": "immediate_stop",
+          "fix_template": "添加信息来源标注和[推测]标记",
+          "examples": {
+            "violation": "这个文件肯定在src目录下",
+            "correct": "根据项目结构推测，文件可能在src目录下 [推测] ⚠️需要验证"
+          }
+        },
+        {
+          "id": "P0-003",
+          "name": "循环内查询数据库",
+          "detection": {
+            "patterns": [
+              "for\\s*\\([^)]+\\)\\s*\\{[\\s\\S]{0,200}?(db\\.|query|select|find)",
+              "while\\s*\\([^)]+\\)\\s*\\{[\\s\\S]{0,200}?(db\\.|query|select|find)"
+            ],
+            "file_types": ["*.go", "*.ts", "*.py", "*.java"]
+          },
+          "severity": "CRITICAL",
+          "action": "immediate_stop",
+          "fix_template": "使用批量查询替代循环内查询",
+          "examples": {
+            "violation": "for (const id of ids) { await db.find(id); }",
+            "correct": "const results = await db.findMany({ where: { id: { in: ids } } });"
+          }
+        },
+        {
+          "id": "P0-004",
+          "name": "未备份修改数据",
+          "detection": {
+            "patterns": [
+              "\\b(DELETE|DROP|TRUNCATE|ALTER)\\b.*\\b(WITH|OR|1=1)\\b"
+            ],
+            "context": "涉及生产环境数据库操作"
+          },
+          "severity": "CRITICAL",
+          "action": "immediate_stop",
+          "fix_template": "1. 备份数据 2. 使用事务 3. 二次确认",
+          "examples": {
+            "violation": "DELETE FROM users WHERE id = 1;",
+            "correct": "BEGIN TRANSACTION; SELECT * FROM users WHERE id = 1; -- 备份"
+          }
+        },
+        {
+          "id": "P0-005",
+          "name": "凭空捏造文件路径",
+          "detection": {
+            "patterns": [
+              "(引用|导入|读取).{0,20}(文件|路径|src|components).{0,50}(?!.*Read.*|.*验证.*)"
+            ],
+            "context": "引用文件前必须使用Read或Glob工具验证存在性"
+          },
+          "severity": "CRITICAL",
+          "action": "immediate_stop",
+          "fix_template": "使用Read或Glob工具验证文件存在性",
+          "examples": {
+            "violation": "修改src/components/Button.tsx",
+            "correct": "使用Glob验证: src/**/*Button*.tsx 确认文件存在后再操作"
+          }
+        }
+      ]
+    },
+    "code_quality": {
+      "name": "代码质量规则",
+      "priority": "P1",
+      "description": "高优先级的代码质量标准",
+      "rules": [
+        {
+          "id": "P1-001",
+          "name": "any类型使用",
+          "detection": {
+            "patterns": [
+              ":\\s*any\\b",
+              "\\bas\\s+any\\b",
+              "<any>",
+              "any\\["
+            ],
+            "file_types": ["*.ts", "*.tsx"],
+            "severity_modifier": "除非在catch块中"
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "使用具体类型或unknown替代any",
+          "examples": {
+            "violation": "const data: any = response.data;",
+            "correct": "const data: ApiResponse<User[]> = response.data;"
+          }
+        },
+        {
+          "id": "P1-002",
+          "name": "SELECT * 查询",
+          "detection": {
+            "patterns": [
+              "(?i)SELECT\\s+\\*",
+              "db\\.\\w+\\(\"SELECT\\s+\\*"
+            ],
+            "file_types": ["*.go", "*.ts", "*.py", "*.java"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "明确列出需要的字段",
+          "examples": {
+            "violation": "SELECT * FROM users",
+            "correct": "SELECT id, name, email FROM users"
+          }
+        },
+        {
+          "id": "P1-003",
+          "name": "未处理error",
+          "detection": {
+            "patterns": [
+              "err\\s*!=\\s*nil\\s*\\{[^}]*\\}\\s*(?!else)",
+              "catch\\s*\\([^)]+\\)\\s*\\{\\s*\\}",
+              "try\\s*\\{[\\s\\S]{0,500}?\\}\\s*catch[^}]*\\{\\s*\\}"
+            ],
+            "file_types": ["*.ts", "*.go", "*.py", "*.java"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "添加错误处理逻辑",
+          "examples": {
+            "violation": "if (err != nil) { }",
+            "correct": "if (err != nil) { log.Error(err); return nil, err; }"
+          }
+        },
+        {
+          "id": "P1-004",
+          "name": "未释放资源",
+          "detection": {
+            "patterns": [
+              "fopen\\([^)]+\\)(?!\\s*defer)",
+              "new\\s+FileReader\\(\\)",
+              "db\\.Connect\\(\\)"
+            ],
+            "file_types": ["*.go", "*.ts", "*.py", "*.java"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "使用defer或try-finally确保资源释放",
+          "examples": {
+            "violation": "file, _ := os.Open(filename)",
+            "correct": "file, err := os.Open(filename); defer file.Close()"
+          }
+        },
+        {
+          "id": "P1-005",
+          "name": "隐式any返回",
+          "detection": {
+            "patterns": [
+              "function\\s+\\w+\\s*\\([^)]*\\)\\s*\\{[^}]*return"
+            ],
+            "exclude": ["function.*:.*\\{", "=>\\s*\\{"],
+            "file_types": ["*.ts", "*.tsx"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "为函数添加明确的返回类型标注",
+          "examples": {
+            "violation": "function getData() { return data; }",
+            "correct": "function getData(): Promise<User[]> { return data; }"
+          }
+        }
+      ]
+    },
+    "process_compliance": {
+      "name": "规范流程规则",
+      "priority": "P2",
+      "description": "中优先级的流程规范",
+      "rules": [
+        {
+          "id": "P2-001",
+          "name": "跳过代码审查",
+          "detection": {
+            "context": "代码提交后直接merge，未经过PR审查流程",
+            "patterns": ["git commit.*git push.*git merge"]
+          },
+          "severity": "NOTICE",
+          "action": "suggest_fix",
+          "fix_template": "发起Pull Request进行代码审查"
+        },
+        {
+          "id": "P2-002",
+          "name": "缺少日志记录",
+          "detection": {
+            "patterns": [
+              "function\\s+\\w+[^}]*\\{[\\s\\S]{0,500}?(?<!log)(?<!info)(?<!debug)(?<!error)\\}$"
+            ],
+            "context": "关键操作函数缺少日志"
+          },
+          "severity": "NOTICE",
+          "action": "suggest_fix",
+          "fix_template": "添加适当的日志记录"
+        },
+        {
+          "id": "P2-003",
+          "name": "任务状态未更新",
+          "detection": {
+            "context": "任务完成后未更新任务状态"
+          },
+          "severity": "NOTICE",
+          "action": "suggest_fix",
+          "fix_template": "使用TodoWrite工具标记任务为completed"
+        },
+        {
+          "id": "P2-004",
+          "name": "上下文过长",
+          "detection": {
+            "context": "上下文长度超过L3级别",
+            "thresholds": {
+              "L1": "< 20KB",
+              "L2": "20-50KB",
+              "L3": "50-100KB",
+              "L4": "100-200KB",
+              "L5": "> 200KB"
+            }
+          },
+          "severity": "NOTICE",
+          "action": "require_fix",
+          "fix_template": "生成上下文摘要，精简历史信息"
+        }
+      ]
+    },
+    "security": {
+      "name": "安全漏洞规则",
+      "priority": "P1",
+      "description": "安全相关的检测规则",
+      "rules": [
+        {
+          "id": "SEC-001",
+          "name": "SQL注入风险",
+          "detection": {
+            "patterns": [
+              "(?i)SELECT.*\\+.*request\\.",
+              "(?i)INSERT.*\\+.*request\\.",
+              "(?i)query.*\\+.*\\+",
+              "executeQuery.*\\+\\s*['\"]"
+            ],
+            "file_types": ["*.java", "*.ts", "*.py", "*.go"]
+          },
+          "severity": "CRITICAL",
+          "action": "immediate_stop",
+          "fix_template": "使用参数化查询",
+          "examples": {
+            "violation": "query = \"SELECT * FROM users WHERE name = '\" + username + \"'\";",
+            "correct": "query = \"SELECT * FROM users WHERE name = ?\"; stmt.setString(1, username);"
+          }
+        },
+        {
+          "id": "SEC-002",
+          "name": "XSS风险",
+          "detection": {
+            "patterns": [
+              "innerHTML\\s*=",
+              "dangerouslySetInnerHTML",
+              "\\.html\\([^)]*request\\."
+            ],
+            "file_types": ["*.ts", "*.tsx", "*.js", "*.jsx"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "使用安全的HTML转义或React的安全API",
+          "examples": {
+            "violation": "element.innerHTML = userInput;",
+            "correct": "element.textContent = userInput;"
+          }
+        },
+        {
+          "id": "SEC-003",
+          "name": "敏感信息日志泄露",
+          "detection": {
+            "patterns": [
+              "(?i)console\\.(log|error|warn).*?(password|secret|token|key).*?[^'\"]*['\"][^'\"]{3,}['\"]"
+            ],
+            "file_types": ["*.ts", "*.js", "*.go", "*.py"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "移除敏感信息或使用脱敏后的值",
+          "examples": {
+            "violation": "console.log('password:', user.password);",
+            "correct": "console.log('password:', '***');"
+          }
+        },
+        {
+          "id": "SEC-004",
+          "name": "不安全的依赖",
+          "detection": {
+            "context": "检测package.json或requirements.txt中的已知漏洞包",
+            "patterns": ["lodash@<4.17.21", "moment@<2.29.4", "axios@<0.21.1"]
+          },
+          "severity": "WARNING",
+          "action": "require_fix",
+          "fix_template": "升级到安全版本或替换为其他包"
+        }
+      ]
+    }
+  },
+  "enforcement_policy": {
+    "P0": {
+      "action": "immediate_stop",
+      "requires_acknowledgment": true,
+      "blocks_continuation": true,
+      "notification": "🚨 CRITICAL",
+      "color": "red"
+    },
+    "P1": {
+      "action": "require_fix",
+      "requires_acknowledgment": false,
+      "blocks_continuation": false,
+      "notification": "⚠️ WARNING",
+      "color": "yellow"
+    },
+    "P2": {
+      "action": "suggest_fix",
+      "requires_acknowledgment": false,
+      "blocks_continuation": false,
+      "notification": "📝 NOTICE",
+      "color": "blue"
+    }
+  },
+  "detection_config": {
+    "scan_depth": {
+      "quick": {
+        "lines_of_context": 50,
+        "time_limit_seconds": 5,
+        "coverage": "recent_changes"
+      },
+      "standard": {
+        "lines_of_context": 500,
+        "time_limit_seconds": 30,
+        "coverage": "entire_file"
+      },
+      "deep": {
+        "lines_of_context": "unlimited",
+        "time_limit_seconds": 300,
+        "coverage": "entire_module"
+      }
+    },
+    "performance": {
+      "max_rules_per_second": 100,
+      "parallel_scanning": true,
+      "cache_patterns": true
+    }
+  }
+}

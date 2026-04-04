@@ -1,0 +1,23 @@
+{
+  "name": "_auto_c40a4ebda91e4031a41c8c07a6cde8db",
+  "leadAgentId": "c40a4ebda91e4031a41c8c07a6cde8db",
+  "workspacePath": "/Users/fanxing/xunjianbao",
+  "createdAt": "2026-04-04T18:22:17.345Z",
+  "options": {
+    "workspacePath": "/Users/fanxing/xunjianbao",
+    "isAutoTeam": true
+  },
+  "members": [
+    {
+      "memberId": "team-lead@_auto_c40a4ebda91e4031a41c8c07a6cde8db",
+      "name": "team-lead",
+      "role": "Team Lead - coordinates the team and interacts with the user"
+    },
+    {
+      "memberId": "code-explorer@_auto_c40a4ebda91e4031a41c8c07a6cde8db",
+      "name": "code-explorer",
+      "role": "Explore codebase architecture"
+    }
+  ],
+  "isAutoTeam": true
+}

@@ -1,0 +1,90 @@
+{
+  "version": 2,
+  "sessions": {
+    "ab503191d1b04b2db603bfbc53bdb975": [
+      {
+        "expertId": "SeniorDeveloper",
+        "name": "Will",
+        "profession": "高级开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SeniorDeveloper/SeniorDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SeniorDeveloper/SeniorDeveloper_zh.md",
+        "usedAt": 1775312766953,
+        "industryId": "02-Engineering"
+      },
+      {
+        "expertId": "UserExperienceArchitect",
+        "name": "Tom",
+        "profession": "用户体验架构师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/01-Design/UserExperienceArchitect/UserExperienceArchitect.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/01-Design/UserExperienceArchitect/UserExperienceArchitect_zh.md",
+        "usedAt": 1775309904069,
+        "industryId": "01-Design"
+      }
+    ],
+    "020e342b6c9f4bc8baf24ad16b6dda4d": [
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1775311225412,
+        "industryId": "02-Engineering"
+      }
+    ],
+    "1158151bbd7749d489adbbb5ddff7689": [
+      {
+        "expertId": "DevOpsAutomationEngineer",
+        "name": "Noah",
+        "profession": "DevOps自动化工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/DevOpsAutomationEngineer/DevOpsAutomationEngineer.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/DevOpsAutomationEngineer/DevOpsAutomationEngineer_zh.md",
+        "usedAt": 1775312653557,
+        "industryId": "02-Engineering"
+      },
+      {
+        "expertId": "SoftwareArchitect",
+        "name": "Yara",
+        "profession": "软件架构师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SoftwareArchitect/SoftwareArchitect.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SoftwareArchitect/SoftwareArchitect_zh.md",
+        "usedAt": 1775312216253,
+        "industryId": "02-Engineering"
+      }
+    ],
+    "40ae048a639b496e9f7c1d486e642cd0": [
+      {
+        "expertId": "DevOpsAutomationEngineer",
+        "name": "Noah",
+        "profession": "DevOps自动化工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/DevOpsAutomationEngineer/DevOpsAutomationEngineer.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/DevOpsAutomationEngineer/DevOpsAutomationEngineer_zh.md",
+        "usedAt": 1775312653557,
+        "industryId": "02-Engineering"
+      }
+    ],
+    "9d7e7d9890fa4e10a68aa3dbfaa36158": [
+      {
+        "expertId": "SeniorDeveloper",
+        "name": "Will",
+        "profession": "高级开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SeniorDeveloper/SeniorDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SeniorDeveloper/SeniorDeveloper_zh.md",
+        "usedAt": 1775312766953,
+        "industryId": "02-Engineering"
+      }
+    ],
+    "c40a4ebda91e4031a41c8c07a6cde8db": [
+      {
+        "expertId": "SeniorDeveloper",
+        "name": "Will",
+        "profession": "高级开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SeniorDeveloper/SeniorDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SeniorDeveloper/SeniorDeveloper_zh.md",
+        "usedAt": 1775326925028,
+        "industryId": "02-Engineering"
+      }
+    ]
+  },
+  "lastUpdated": 1775327119075
+}

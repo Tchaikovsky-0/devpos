@@ -1,0 +1,310 @@
+{
+  "monitor": {
+    "version": "1.0.0",
+    "enabled": true,
+    "mode": "realtime",
+    
+    "triggers": {
+      "on_file_save": {
+        "enabled": true,
+        "debounce_ms": 5000,
+        "file_patterns": [
+          "*.ts",
+          "*.tsx",
+          "*.go",
+          "*.py"
+        ],
+        "ignore_patterns": [
+          "*.test.ts",
+          "*.spec.ts",
+          "*.config.ts",
+          "node_modules/**",
+          "dist/**",
+          "build/**"
+        ]
+      },
+      
+      "on_git_commit": {
+        "enabled": true,
+        "check_staged_only": false,
+        "block_on_p0": true,
+        "block_on_p1": false
+      },
+      
+      "on_pr_create": {
+        "enabled": true,
+        "require_all_pass": true,
+        "notify_reviewer": true
+      },
+      
+      "schedule": {
+        "enabled": true,
+        "daily": "0 9 * * *",
+        "weekly": "0 9 * * 1"
+      }
+    },
+    
+    "frontend": {
+      "enabled": true,
+      "working_directory": "frontend",
+      "checks": [
+        {
+          "name": "TypeScript",
+          "command": "pnpm exec tsc --noEmit",
+          "timeout_ms": 60000,
+          "priority": "P0",
+          "parser": "typescript",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "ESLint",
+          "command": "pnpm lint",
+          "timeout_ms": 30000,
+          "priority": "P1",
+          "parser": "eslint",
+          "enabled": true,
+          "auto_fix": true,
+          "fix_command": "pnpm lint --fix"
+        },
+        {
+          "name": "Build",
+          "command": "pnpm build",
+          "timeout_ms": 120000,
+          "priority": "P1",
+          "parser": "vite",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "Security Audit",
+          "command": "pnpm audit",
+          "timeout_ms": 30000,
+          "priority": "P0",
+          "parser": "npm-audit",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "Tests",
+          "command": "pnpm test",
+          "timeout_ms": 120000,
+          "priority": "P1",
+          "parser": "jest",
+          "enabled": false,
+          "auto_fix": false
+        }
+      ]
+    },
+    
+    "backend": {
+      "enabled": true,
+      "working_directory": "backend",
+      "checks": [
+        {
+          "name": "Go Vet",
+          "command": "go vet ./...",
+          "timeout_ms": 30000,
+          "priority": "P0",
+          "parser": "go-vet",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "GolangCI-Lint",
+          "command": "golangci-lint run ./...",
+          "timeout_ms": 60000,
+          "priority": "P0",
+          "parser": "golangci-lint",
+          "enabled": true,
+          "auto_fix": true,
+          "fix_command": "golangci-lint run --fix ./..."
+        },
+        {
+          "name": "Go Test",
+          "command": "go test -v ./...",
+          "timeout_ms": 120000,
+          "priority": "P1",
+          "parser": "go-test",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "Go Build",
+          "command": "go build ./...",
+          "timeout_ms": 60000,
+          "priority": "P1",
+          "parser": "go-build",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "Dependencies",
+          "command": "go list -m all",
+          "timeout_ms": 10000,
+          "priority": "P1",
+          "parser": "go-list",
+          "enabled": true,
+          "auto_fix": false
+        }
+      ]
+    },
+    
+    "ai_service": {
+      "enabled": true,
+      "working_directory": "ai-service",
+      "checks": [
+        {
+          "name": "MyPy",
+          "command": "mypy .",
+          "timeout_ms": 30000,
+          "priority": "P1",
+          "parser": "mypy",
+          "enabled": true,
+          "auto_fix": false
+        },
+        {
+          "name": "Black",
+          "command": "black --check .",
+          "timeout_ms": 20000,
+          "priority": "P2",
+          "parser": "black",
+          "enabled": true,
+          "auto_fix": true,
+          "fix_command": "black ."
+        },
+        {
+          "name": "PyTest",
+          "command": "pytest tests/ -v",
+          "timeout_ms": 120000,
+          "priority": "P1",
+          "parser": "pytest",
+          "enabled": true,
+          "auto_fix": false
+        }
+      ]
+    },
+    
+    "notifications": {
+      "p0": {
+        "immediate": true,
+        "channels": ["console", "log"],
+        "recipients": ["frontend-dev", "backend-dev", "project-lead"],
+        "template": {
+          "title": "🚨 【紧急】检测到P0错误",
+          "body": "发现{count}个P0错误，必须立即修复！\n位置: {location}\n错误: {message}"
+        }
+      },
+      
+      "p1": {
+        "immediate": false,
+        "batch_size": 10,
+        "channels": ["console", "log"],
+        "recipients": ["frontend-dev", "backend-dev"],
+        "template": {
+          "title": "⚠️ 【警告】检测到P1问题",
+          "body": "发现{count}个P1警告，建议尽快修复\n{summary}"
+        }
+      },
+      
+      "p2": {
+        "immediate": false,
+        "schedule": "daily",
+        "channels": ["log"],
+        "recipients": ["all"],
+        "template": {
+          "title": "📝 【提示】代码质量建议",
+          "body": "发现{count}个P2提示\n{summary}"
+        }
+      }
+    },
+    
+    "thresholds": {
+      "max_errors": 0,
+      "max_warnings": 10,
+      "max_p0_errors": 0,
+      "max_p1_warnings": 5,
+      "min_test_coverage": 70,
+      "max_build_time_ms": 120000,
+      "max_check_time_ms": 180000
+    },
+    
+    "reports": {
+      "output_dir": ".trae/reports",
+      "formats": ["markdown", "json"],
+      "retention_days": 30,
+      "include_code_snippets": true,
+      "max_snippet_lines": 10,
+      "include_history": true,
+      "history_days": 7
+    },
+    
+    "parsers": {
+      "typescript": {
+        "error_pattern": "^(.+?)\\((\\d+),(\\d+)\\): error (TS\\d+): (.+)$",
+        "file_group": 1,
+        "line_group": 2,
+        "column_group": 3,
+        "code_group": 4,
+        "message_group": 5
+      },
+      
+      "eslint": {
+        "error_pattern": "^\\s*(\\d+):(\\d+)\\s+(error|warning)\\s+(.+?)\\s+(.+)$",
+        "line_group": 1,
+        "column_group": 2,
+        "severity_group": 3,
+        "message_group": 4,
+        "rule_group": 5
+      },
+      
+      "go-vet": {
+        "error_pattern": "^(.+?):(\\d+):(\\d+): (.+)$",
+        "file_group": 1,
+        "line_group": 2,
+        "column_group": 3,
+        "message_group": 4
+      }
+    },
+    
+    "integrations": {
+      "git_hooks": {
+        "enabled": true,
+        "pre_commit": true,
+        "pre_push": false,
+        "commit_msg": false
+      },
+      
+      "ci_cd": {
+        "enabled": true,
+        "platform": "github",
+        "fail_on_error": true,
+        "report_artifacts": true
+      },
+      
+      "ide": {
+        "enabled": true,
+        "vscode": true,
+        "webstorm": true,
+        "real_time": true
+      }
+    },
+    
+    "performance": {
+      "parallel_checks": true,
+      "max_parallel_jobs": 3,
+      "cache_results": true,
+      "cache_ttl_ms": 300000,
+      "incremental_check": true
+    },
+    
+    "logging": {
+      "level": "info",
+      "output_dir": ".trae/logs",
+      "max_file_size_mb": 10,
+      "max_files": 5,
+      "include_timestamp": true,
+      "include_duration": true
+    }
+  }
+}

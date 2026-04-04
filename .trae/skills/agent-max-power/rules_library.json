@@ -1,0 +1,677 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-04-02",
+  "total_rules": 20,
+  "categories": {
+    "parallelization": {
+      "name": "并行处理规则",
+      "priority": "CRITICAL",
+      "description": "强制并行化独立任务，提升吞吐量",
+      "rules": [
+        {
+          "id": "PARA-001",
+          "name": "强制并行化独立任务",
+          "detection": {
+            "patterns": [
+              "for.*await",
+              "逐个.*读取",
+              "逐个.*调用",
+              "sequential.*task"
+            ],
+            "context": "独立任务串行执行",
+            "description": "检测到独立任务被串行执行"
+          },
+          "severity": "CRITICAL",
+          "action": "require_parallel",
+          "fix_template": "使用 asyncio.gather() 或 ThreadPoolExecutor 并行执行",
+          "examples": {
+            "violation": "for file in files:\n    data = await read(file)",
+            "correct": "data = await asyncio.gather(*[read(f) for f in files])"
+          },
+          "performance_impact": "提升 50-90%",
+          "auto_fix": true
+        },
+        {
+          "id": "PARA-002",
+          "name": "禁止并行有依赖的任务",
+          "detection": {
+            "patterns": [
+              "await.*result.*await.*result.*dependent",
+              "前一个.*依赖.*后一个"
+            ],
+            "context": "有依赖关系的任务被并行化",
+            "description": "检测到有依赖的任务被错误并行化"
+          },
+          "severity": "CRITICAL",
+          "action": "require_sequential",
+          "fix_template": "拆分任务，先执行无依赖部分，再执行依赖部分",
+          "examples": {
+            "violation": "asyncio.gather(task_b(task_a_result), task_c()) # task_b依赖task_a结果",
+            "correct": "result_a = await task_a()\nresult_c = await task_c()\nresult_b = await task_b(result_a)"
+          },
+          "performance_impact": "避免错误并行化导致的问题"
+        },
+        {
+          "id": "PARA-003",
+          "name": "并发数限制",
+          "detection": {
+            "patterns": [
+              "asyncio.gather.*1000",
+              "ThreadPoolExecutor.*1000",
+              "max_workers.*1000"
+            ],
+            "context": "并发数过高导致资源耗尽",
+            "description": "检测到并发数设置过高"
+          },
+          "severity": "HIGH",
+          "action": "require_tuning",
+          "fix_template": "设置合理的并发数（IO密集型：100-1000，CPU密集型：CPU核心数）",
+          "examples": {
+            "violation": "ThreadPoolExecutor(max_workers=10000)",
+            "correct": "ThreadPoolExecutor(max_workers=100)"
+          },
+          "performance_impact": "避免资源耗尽"
+        },
+        {
+          "id": "PARA-004",
+          "name": "异步IO优先",
+          "detection": {
+            "patterns": [
+              "requests\\.",
+              "urllib\\.",
+              "sync.*http"
+            ],
+            "context": "使用同步IO阻塞事件循环",
+            "description": "在异步代码中使用同步IO"
+          },
+          "severity": "HIGH",
+          "action": "require_async",
+          "fix_template": "使用 aiohttp、httpx 或 asyncio.to_thread() 包装同步调用",
+          "examples": {
+            "violation": "import requests\nresponse = requests.get(url)",
+            "correct": "import aiohttp\nasync with aiohttp.ClientSession() as session:\n    async with session.get(url) as response"
+          },
+          "performance_impact": "避免阻塞事件循环"
+        }
+      ]
+    },
+    "caching": {
+      "name": "缓存复用规则",
+      "priority": "CRITICAL",
+      "description": "强制缓存重复数据和计算结果",
+      "rules": [
+        {
+          "id": "CACHE-001",
+          "name": "强制缓存重复读取",
+          "detection": {
+            "patterns": [
+              "read.*read.*read",
+              "open.*open.*open",
+              "get_file.*get_file"
+            ],
+            "context": "同一文件被重复读取",
+            "description": "检测到同一文件被读取多次"
+          },
+          "severity": "CRITICAL",
+          "action": "require_cache",
+          "fix_template": "实现文件缓存，读取后存入内存",
+          "examples": {
+            "violation": "for i in range(10):\n    data = read_file('config.json')",
+            "correct": "cache = {}\ndef read_cached(file):\n    if file not in cache:\n        cache[file] = read_file(file)\n    return cache[file]"
+          },
+          "performance_impact": "提升 50-90%"
+        },
+        {
+          "id": "CACHE-002",
+          "name": "强制缓存重复API调用",
+          "detection": {
+            "patterns": [
+              "api\\.get.*api\\.get",
+              "fetch.*fetch.*fetch",
+              "await.*api.*await.*api"
+            ],
+            "context": "相同API被重复调用",
+            "description": "检测到相同API被调用多次"
+          },
+          "severity": "CRITICAL",
+          "action": "require_cache",
+          "fix_template": "实现API响应缓存，设置TTL",
+          "examples": {
+            "violation": "for user_id in users:\n    user = await api.get_user(user_id)",
+            "correct": "user_cache = {}\nasync def get_user_cached(uid):\n    if uid not in user_cache:\n        user_cache[uid] = await api.get_user(uid)\n    return user_cache[uid]"
+          },
+          "performance_impact": "提升 80-95%"
+        },
+        {
+          "id": "CACHE-003",
+          "name": "禁止缓存无限增长",
+          "detection": {
+            "patterns": [
+              "cache\\[.*\\].*=",
+              "cache\\.set.*without.*limit"
+            ],
+            "context": "缓存无大小限制",
+            "description": "缓存可能无限增长导致内存耗尽"
+          },
+          "severity": "HIGH",
+          "action": "require_cache_limit",
+          "fix_template": "实现缓存淘汰策略（LRU/LFU），设置最大容量",
+          "examples": {
+            "violation": "cache[key] = value  # 无限增长",
+            "correct": "if len(cache) > MAX_SIZE:\n    cache.pop oldest\ncache[key] = value"
+          },
+          "performance_impact": "防止内存耗尽"
+        },
+        {
+          "id": "CACHE-004",
+          "name": "缓存失效策略",
+          "detection": {
+            "patterns": [
+              "cache.*no.*expiry",
+              "cache.*never.*expire",
+              "永久.*缓存"
+            ],
+            "context": "缓存无过期时间",
+            "description": "缓存数据永不过期"
+          },
+          "severity": "MEDIUM",
+          "action": "require_expiry",
+          "fix_template": "设置缓存TTL，定期清理过期数据",
+          "examples": {
+            "violation": "cache[key] = (value, None)  # 无过期时间",
+            "correct": "cache[key] = (value, time.time() + TTL)"
+          },
+          "performance_impact": "保证数据一致性"
+        }
+      ]
+    },
+    "batching": {
+      "name": "批量处理规则",
+      "priority": "HIGH",
+      "description": "强制批量处理多个小请求",
+      "rules": [
+        {
+          "id": "BATCH-001",
+          "name": "强制批量数据库查询",
+          "detection": {
+            "patterns": [
+              "for.*SELECT.*WHERE.*=",
+              "循环.*查询数据库",
+              "N\\+1.*problem"
+            ],
+            "context": "循环中执行数据库查询",
+            "description": "检测到N+1查询问题"
+          },
+          "severity": "CRITICAL",
+          "action": "require_batch_query",
+          "fix_template": "使用 IN 语句或 JOIN 批量查询",
+          "examples": {
+            "violation": "for id in ids:\n    user = db.query(f'SELECT * FROM users WHERE id = {id}')",
+            "correct": "users = db.query(f'SELECT * FROM users WHERE id IN ({ids})')"
+          },
+          "performance_impact": "提升 50-95%"
+        },
+        {
+          "id": "BATCH-002",
+          "name": "强制批量API调用",
+          "detection": {
+            "patterns": [
+              "for.*await.*api\\.",
+              "循环.*调用API",
+              "multiple.*api.*calls.*loop"
+            ],
+            "context": "循环中执行API调用",
+            "description": "检测到循环中调用API"
+          },
+          "severity": "HIGH",
+          "action": "require_batch_api",
+          "fix_template": "使用批量API或Promise.all并行调用",
+          "examples": {
+            "violation": "for id in ids:\n    data = await api.get_item(id)",
+            "correct": "data = await api.get_items_batch(ids)\n# 或\ndata = await asyncio.gather(*[api.get_item(id) for id in ids])"
+          },
+          "performance_impact": "提升 60-90%"
+        },
+        {
+          "id": "BATCH-003",
+          "name": "批量文件操作",
+          "detection": {
+            "patterns": [
+              "for.*write.*file",
+              "逐个.*写入文件"
+            ],
+            "context": "循环中写入文件",
+            "description": "检测到循环中写入多个文件"
+          },
+          "severity": "MEDIUM",
+          "action": "suggest_batch",
+          "fix_template": "合并写入或使用异步批量写入",
+          "examples": {
+            "violation": "for data in data_list:\n    write_file(f'{data.id}.txt', data.content)",
+            "correct": "tasks = [write_file(f'{d.id}.txt', d.content) for d in data_list]\nawait asyncio.gather(*tasks)"
+          },
+          "performance_impact": "提升 40-70%"
+        }
+      ]
+    },
+    "async_io": {
+      "name": "异步IO规则",
+      "priority": "HIGH",
+      "description": "强制使用异步IO避免阻塞",
+      "rules": [
+        {
+          "id": "ASYNC-001",
+          "name": "禁止同步阻塞IO",
+          "detection": {
+            "patterns": [
+              "time\\.sleep",
+              "threading\\.Event\\(\\)\\.wait",
+              "while.*not.*done"
+            ],
+            "context": "异步代码中使用同步等待",
+            "description": "检测到在async代码中使用同步等待"
+          },
+          "severity": "CRITICAL",
+          "action": "require_async_wait",
+          "fix_template": "使用 asyncio.sleep() 或 await",
+          "examples": {
+            "violation": "async def wait():\n    time.sleep(5)",
+            "correct": "async def wait():\n    await asyncio.sleep(5)"
+          },
+          "performance_impact": "避免阻塞事件循环"
+        },
+        {
+          "id": "ASYNC-002",
+          "name": "强制异步文件IO",
+          "detection": {
+            "patterns": [
+              "with open.*as f:.*read",
+              "f\\.read\\(\\)"
+            ],
+            "context": "在async代码中使用同步文件IO",
+            "description": "检测到在async代码中使用同步文件IO"
+          },
+          "severity": "HIGH",
+          "action": "require_async_io",
+          "fix_template": "使用 aiofiles 或 asyncio.to_thread()",
+          "examples": {
+            "violation": "async def read():\n    with open('file') as f:\n        return f.read()",
+            "correct": "import aiofiles\nasync def read():\n    async with aiofiles.open('file') as f:\n        return await f.read()"
+          },
+          "performance_impact": "避免IO阻塞"
+        }
+      ]
+    },
+    "preloading": {
+      "name": "预加载规则",
+      "priority": "MEDIUM",
+      "description": "建议预加载可能需要的数据",
+      "rules": [
+        {
+          "id": "PRELOAD-001",
+          "name": "建议预加载下一步数据",
+          "detection": {
+            "patterns": [
+              "predict.*next.*step",
+              "常见.*模式"
+            ],
+            "context": "识别到常见任务模式",
+            "description": "建议预加载下一步可能需要的数据"
+          },
+          "severity": "MEDIUM",
+          "action": "suggest_preload",
+          "fix_template": "在后台任务中预加载数据",
+          "examples": {
+            "violation": "result = await task_a()\ndata = await load_data()",
+            "correct": "result = await task_a()\nasyncio.create_task(load_data())  # 预加载"
+          },
+          "performance_impact": "提升 10-30%"
+        },
+        {
+          "id": "PRELOAD-002",
+          "name": "禁止无用的预加载",
+          "detection": {
+            "patterns": [
+              "preload.*never.*use",
+              "预加载.*不使用"
+            ],
+            "context": "预加载了不会被使用的数据",
+            "description": "检测到浪费资源的预加载"
+          },
+          "severity": "LOW",
+          "action": "suggest_remove",
+          "fix_template": "移除未使用的预加载，避免浪费资源",
+          "examples": {
+            "violation": "preload_everything()  # 预加载所有可能的数据",
+            "correct": "preload_likely_needed()  # 只预加载可能需要的"
+          },
+          "performance_impact": "节省资源"
+        }
+      ]
+    },
+    "monitoring": {
+      "name": "监控规则",
+      "priority": "HIGH",
+      "description": "强制监控关键性能指标",
+      "rules": [
+        {
+          "id": "MON-001",
+          "name": "强制性能监控",
+          "detection": {
+            "patterns": [
+              "no.*monitoring",
+              "无.*监控"
+            ],
+            "context": "缺少性能监控",
+            "description": "检测到缺少性能监控"
+          },
+          "severity": "HIGH",
+          "action": "require_monitoring",
+          "fix_template": "添加性能指标监控（响应时间、吞吐量、错误率）",
+          "examples": {
+            "violation": "def process():\n    return do_work()",
+            "correct": "def process():\n    start = time.time()\n    result = do_work()\n    metrics.record('duration', time.time() - start)\n    return result"
+          },
+          "performance_impact": "便于优化"
+        },
+        {
+          "id": "MON-002",
+          "name": "强制超时设置",
+          "detection": {
+            "patterns": [
+              "no.*timeout",
+              "无限.*等待",
+              "wait.*forever"
+            ],
+            "context": "操作无超时设置",
+            "description": "检测到操作没有超时设置"
+          },
+          "severity": "HIGH",
+          "action": "require_timeout",
+          "fix_template": "为所有IO操作设置合理的超时时间",
+          "examples": {
+            "violation": "response = requests.get(url)",
+            "correct": "response = requests.get(url, timeout=5)"
+          },
+          "performance_impact": "防止无限等待"
+        },
+        {
+          "id": "MON-003",
+          "name": "强制错误处理",
+          "detection": {
+            "patterns": [
+              "try.*pass",
+              "except.*pass",
+              "忽略.*错误"
+            ],
+            "context": "错误被忽略",
+            "description": "检测到错误被静默忽略"
+          },
+          "severity": "MEDIUM",
+          "action": "require_error_handling",
+          "fix_template": "记录错误日志，设置重试机制",
+          "examples": {
+            "violation": "try:\n    do_something()\nexcept:\n    pass",
+            "correct": "try:\n    do_something()\nexcept Exception as e:\n    logger.error(f'操作失败: {e}')\n    raise"
+          },
+          "performance_impact": "提高可靠性"
+        }
+      ]
+    },
+    "optimization": {
+      "name": "性能优化规则",
+      "priority": "MEDIUM",
+      "description": "其他性能优化建议",
+      "rules": [
+        {
+          "id": "OPT-001",
+          "name": "使用生成器处理大数据",
+          "detection": {
+            "patterns": [
+              "list\\(.*for.*in.*\\)",
+              "\\[.*for.*in.*\\]"
+            ],
+            "context": "处理大量数据时使用列表推导式",
+            "description": "检测到可能占用大量内存的列表推导"
+          },
+          "severity": "MEDIUM",
+          "action": "suggest_generator",
+          "fix_template": "使用生成器表达式代替列表推导",
+          "examples": {
+            "violation": "results = [process(item) for item in huge_list]",
+            "correct": "results = (process(item) for item in huge_list)"
+          },
+          "performance_impact": "减少内存占用"
+        },
+        {
+          "id": "OPT-002",
+          "name": "使用连接池",
+          "detection": {
+            "patterns": [
+              "db\\.connect.*db\\.connect",
+              "每次.*创建.*连接"
+            ],
+            "context": "重复创建数据库连接",
+            "description": "检测到重复创建数据库连接"
+          },
+          "severity": "HIGH",
+          "action": "require_connection_pool",
+          "fix_template": "使用连接池复用连接",
+          "examples": {
+            "violation": "for query in queries:\n    conn = db.connect()\n    conn.execute(query)",
+            "correct": "pool = db.create_pool(size=10)\nfor query in queries:\n    conn = pool.get_connection()\n    conn.execute(query)"
+          },
+          "performance_impact": "提升 50-80%"
+        },
+        {
+          "id": "OPT-003",
+          "name": "避免不必要的复制",
+          "detection": {
+            "patterns": [
+              "\\.copy\\(\\).*\\.copy\\(\\)",
+              "复制.*复制"
+            ],
+            "context": "进行不必要的深拷贝",
+            "description": "检测到不必要的对象复制"
+          },
+          "severity": "LOW",
+          "action": "suggest_optimize",
+          "fix_template": "使用引用或浅拷贝",
+          "examples": {
+            "violation": "data_copy = copy.deepcopy(data)\nresult = process(copy.deepcopy(data_copy))",
+            "correct": "result = process(data)"
+          },
+          "performance_impact": "减少内存和CPU"
+        }
+      ]
+    }
+  },
+  "enforcement_policy": {
+    "CRITICAL": {
+      "action": "require_immediate_optimization",
+      "requires_acknowledgment": true,
+      "blocks_continuation": false,
+      "notification": "🚀 CRITICAL",
+      "color": "red",
+      "performance_impact": "50-90%提升"
+    },
+    "HIGH": {
+      "action": "require_optimization",
+      "requires_acknowledgment": false,
+      "blocks_continuation": false,
+      "notification": "⚡ HIGH",
+      "color": "orange",
+      "performance_impact": "30-60%提升"
+    },
+    "MEDIUM": {
+      "action": "suggest_optimization",
+      "requires_acknowledgment": false,
+      "blocks_continuation": false,
+      "notification": "💡 MEDIUM",
+      "color": "yellow",
+      "performance_impact": "10-30%提升"
+    },
+    "LOW": {
+      "action": "optional_optimization",
+      "requires_acknowledgment": false,
+      "blocks_continuation": false,
+      "notification": "📝 LOW",
+      "color": "blue",
+      "performance_impact": "5-10%提升"
+    }
+  },
+  "performance_metrics": {
+    "target_metrics": {
+      "response_time": {
+        "fast": "< 100ms",
+        "normal": "100-500ms",
+        "acceptable": "500-1000ms",
+        "slow": "> 1000ms"
+      },
+      "throughput": {
+        "low": "< 10 QPS",
+        "medium": "10-100 QPS",
+        "high": "100-1000 QPS",
+        "very_high": "> 1000 QPS"
+      },
+      "error_rate": {
+        "excellent": "< 0.1%",
+        "good": "< 1%",
+        "acceptable": "< 5%",
+        "poor": "> 5%"
+      },
+      "cache_hit_rate": {
+        "excellent": "> 80%",
+        "good": "> 50%",
+        "acceptable": "> 30%",
+        "poor": "< 30%"
+      }
+    },
+    "alerts": {
+      "P0": {
+        "response_time": "> 5000ms",
+        "error_rate": "> 5%",
+        "cpu_usage": "> 95%"
+      },
+      "P1": {
+        "response_time": "> 2000ms",
+        "error_rate": "> 1%",
+        "cpu_usage": "> 80%"
+      },
+      "P2": {
+        "response_time": "> 1000ms",
+        "error_rate": "> 0.1%",
+        "cache_hit_rate": "< 50%"
+      }
+    }
+  },
+  "optimization_strategies": {
+    "parallelization": {
+      "description": "并行处理独立任务",
+      "techniques": [
+        "asyncio.gather()",
+        "ThreadPoolExecutor",
+        "multiprocessing",
+        "concurrent.futures"
+      ],
+      "best_for": [
+        "多个独立IO操作",
+        "多个API调用",
+        "多个文件读取"
+      ]
+    },
+    "caching": {
+      "description": "缓存重复数据和计算",
+      "techniques": [
+        "内存缓存",
+        "磁盘缓存",
+        "分布式缓存",
+        "CDN缓存"
+      ],
+      "best_for": [
+        "重复读取文件",
+        "重复调用API",
+        "重复计算结果"
+      ]
+    },
+    "batching": {
+      "description": "批量处理多个请求",
+      "techniques": [
+        "批量数据库查询",
+        "批量API调用",
+        "批量文件操作"
+      ],
+      "best_for": [
+        "N+1查询问题",
+        "大量小请求",
+        "批量更新"
+      ]
+    },
+    "async_io": {
+      "description": "异步IO避免阻塞",
+      "techniques": [
+        "asyncio",
+        "aiohttp",
+        "aiofiles",
+        "await"
+      ],
+      "best_for": [
+        "网络IO",
+        "文件IO",
+        "长时间等待"
+      ]
+    },
+    "preloading": {
+      "description": "预加载可能需要的数据",
+      "techniques": [
+        "预测性加载",
+        "后台预加载",
+        "预取"
+      ],
+      "best_for": [
+        "常见任务模式",
+        "资源空闲时",
+        "可预测的下一步"
+      ]
+    }
+  },
+  "benchmark_templates": {
+    "baseline": {
+      "name": "基准测试",
+      "description": "无优化的基准性能",
+      "expected_time": "1.0x"
+    },
+    "with_cache": {
+      "name": "缓存优化",
+      "description": "仅启用缓存",
+      "expected_time": "0.5x",
+      "improvement": "50%"
+    },
+    "with_parallel": {
+      "name": "并行优化",
+      "description": "仅启用并行",
+      "expected_time": "0.3x",
+      "improvement": "70%"
+    },
+    "max_power": {
+      "name": "最大功率",
+      "description": "所有优化",
+      "expected_time": "0.2x",
+      "improvement": "500%+"
+    }
+  },
+  "auto_fix_templates": {
+    "parallelize": {
+      "before": "for item in items:\n    result = await process(item)",
+      "after": "results = await asyncio.gather(*[process(item) for item in items])"
+    },
+    "cache": {
+      "before": "data = read_file(path)\ndata = read_file(path)",
+      "after": "cache = {}\ndef read_cached(path):\n    if path not in cache:\n        cache[path] = read_file(path)\n    return cache[path]"
+    },
+    "batch_query": {
+      "before": "for id in ids:\n    item = db.query(f'SELECT * FROM items WHERE id = {id}')",
+      "after": "items = db.query(f'SELECT * FROM items WHERE id IN ({ids})')"
+    }
+  }
+}

@@ -1,0 +1,321 @@
+/**
+ * 巡检宝主题系统 v2.0
+ * Precision Order · 精密秩序
+ * 
+ * 使用方法:
+ * 1. 在HTML根元素上设置 data-theme 属性: <html data-theme="deep">
+ * 2. 可选值: deep | balanced | clear
+ * 3. 使用 CSS 变量进行样式定义
+ */
+
+/* ========================================
+   基础变量（深境模式 - 默认）
+   ======================================== */
+:root {
+  /* 背景色 */
+  --bg-primary: #0D1117;
+  --bg-secondary: #161B22;
+  --bg-tertiary: #21262D;
+  --bg-hover: #30363D;
+  --bg-active: #484F58;
+  
+  /* 边框色 */
+  --border: #30363D;
+  --border-secondary: #21262D;
+  --border-hover: #3D444D;
+  
+  /* 文字色 */
+  --text-primary: #E6EDF3;
+  --text-secondary: #7D8590;
+  --text-tertiary: #484F58;
+  --text-disabled: #6E7681;
+  
+  /* 强调色 */
+  --accent: #58A6FF;
+  --accent-hover: #79C0FF;
+  --accent-muted: rgba(88, 166, 255, 0.1);
+  --accent-border: rgba(88, 166, 255, 0.3);
+  
+  /* 功能色 */
+  --success: #3FB950;
+  --success-muted: rgba(63, 185, 80, 0.1);
+  --warning: #D29922;
+  --warning-muted: rgba(210, 153, 34, 0.1);
+  --error: #F85149;
+  --error-muted: rgba(248, 81, 73, 0.1);
+  --info: #58A6FF;
+  --info-muted: rgba(88, 166, 255, 0.1);
+  
+  /* 间距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+  
+  /* 字体 */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  
+  /* 字号 */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 32px;
+  --text-4xl: 48px;
+  
+  /* 行高 */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+  
+  /* 过渡 */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(88, 166, 255, 0.3);
+}
+
+/* ========================================
+   均衡模式
+   ======================================== */
+[data-theme="balanced"] {
+  --bg-primary: #1E2228;
+  --bg-secondary: #2A3038;
+  --bg-tertiary: #3A424A;
+  --bg-hover: #4A525A;
+  --bg-active: #5A626A;
+  
+  --border: #3D444D;
+  --border-secondary: #2D343D;
+  --border-hover: #4D545D;
+  
+  --text-primary: #E8EDF2;
+  --text-secondary: #9CA3AF;
+  --text-tertiary: #6B7280;
+  --text-disabled: #7C838F;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* ========================================
+   清境模式
+   ======================================== */
+[data-theme="clear"] {
+  --bg-primary: #F5F7FA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #EDF0F4;
+  --bg-hover: #E1E4E8;
+  --bg-active: #D1D5DA;
+  
+  --border: #DDE2E8;
+  --border-secondary: #E8ECF0;
+  --border-hover: #C8CDD4;
+  
+  --text-primary: #1F2328;
+  --text-secondary: #656D76;
+  --text-tertiary: #8C959F;
+  --text-disabled: #A0A8B0;
+  
+  --accent: #0969DA;
+  --accent-hover: #0550AE;
+  --accent-muted: rgba(9, 105, 218, 0.1);
+  --accent-border: rgba(9, 105, 218, 0.3);
+  
+  --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.04);
+  --shadow-md: 0 3px 6px rgba(31, 35, 40, 0.08);
+  --shadow-lg: 0 8px 24px rgba(31, 35, 40, 0.12);
+  --shadow-glow: 0 0 20px rgba(9, 105, 218, 0.2);
+}
+
+/* ========================================
+   基础样式重置
+   ======================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+}
+
+/* ========================================
+   滚动条样式
+   ======================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ========================================
+   选中文字样式
+   ======================================== */
+::selection {
+  background: var(--accent-muted);
+  color: var(--text-primary);
+}
+
+/* ========================================
+   焦点样式
+   ======================================== */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   占位符样式
+   ======================================== */
+::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* ========================================
+   禁用状态
+   ======================================== */
+:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   工具类
+   ======================================== */
+
+/* 背景 */
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-tertiary { background-color: var(--bg-tertiary); }
+
+/* 文字 */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary { color: var(--text-tertiary); }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-error { color: var(--error); }
+
+/* 边框 */
+.border { border: 1px solid var(--border); }
+.border-secondary { border-color: var(--border-secondary); }
+
+/* 强调色背景 */
+.bg-accent-muted { background-color: var(--accent-muted); }
+.bg-success-muted { background-color: var(--success-muted); }
+.bg-warning-muted { background-color: var(--warning-muted); }
+.bg-error-muted { background-color: var(--error-muted); }
+
+/* 过渡 */
+.transition-fast { transition: all var(--duration-fast) var(--ease-default); }
+.transition-normal { transition: all var(--duration-normal) var(--ease-default); }
+.transition-slow { transition: all var(--duration-slow) var(--ease-default); }
+
+/* ========================================
+   动画
+   ======================================== */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-default);
+}
+
+.animate-slide-in {
+  animation: slideIn var(--duration-normal) var(--ease-default);
+}
+
+.animate-slide-up {
+  animation: slideUp var(--duration-normal) var(--ease-default);
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

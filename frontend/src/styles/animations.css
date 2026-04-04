@@ -1,0 +1,530 @@
+/* ============================================
+   巡检宝 - 动效系统
+   版本: v2.0
+   核心理念: 精致而不炫技
+   ============================================ */
+
+/* ============================================
+   1. 入场动画
+   ============================================ */
+
+/* 淡入 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 淡入上滑 */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 淡入下滑 */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 淡入左滑 */
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 淡入右滑 */
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 缩放淡入 */
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   2. 悬浮动画
+   ============================================ */
+
+/* 悬浮上浮 */
+@keyframes hoverLift {
+  from {
+    transform: translateY(0);
+    box-shadow: var(--shadow-md);
+  }
+  to {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+  }
+}
+
+/* 悬浮放大 */
+@keyframes hoverScale {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.02);
+  }
+}
+
+/* 悬浮发光 */
+@keyframes hoverGlow {
+  from {
+    box-shadow: 0 0 10px rgba(79, 127, 216, 0.2);
+  }
+  to {
+    box-shadow: 0 0 20px rgba(79, 127, 216, 0.4);
+  }
+}
+
+/* ============================================
+   3. 状态动画
+   ============================================ */
+
+/* 脉冲 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 快速脉冲 */
+@keyframes pulseFast {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+}
+
+/* 发光脉冲 */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(79, 127, 216, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(79, 127, 216, 0.6);
+  }
+}
+
+/* 旋转 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 弹跳 */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* 微弹跳 */
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* ============================================
+   4. 加载动画
+   ============================================ */
+
+/* 骨架屏闪烁 */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 渐变加载 */
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 点加载 */
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 圆环旋转 */
+@keyframes ringRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   5. 交互动画
+   ============================================ */
+
+/* 点击缩放 */
+@keyframes tapScale {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.98);
+  }
+}
+
+/* 涟漪扩散 */
+@keyframes ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* 滑块滑动 */
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* ============================================
+   6. 特殊效果
+   ============================================ */
+
+/* 打字机光标 */
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* 渐变边框 */
+@keyframes borderGlow {
+  0%, 100% {
+    border-color: rgba(79, 127, 216, 0.3);
+  }
+  50% {
+    border-color: rgba(79, 127, 216, 0.6);
+  }
+}
+
+/* 背景扫描 */
+@keyframes scanLine {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+/* 数字滚动 */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   7. 动画类
+   ============================================ */
+
+/* 入场动画类 */
+.animate-fade-in {
+  animation: fadeIn var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-down {
+  animation: fadeInDown var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-left {
+  animation: fadeInLeft var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight var(--duration-slow) var(--ease-out) forwards;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale var(--duration-slow) var(--ease-spring) forwards;
+}
+
+/* 悬浮动画类 */
+.animate-hover-lift {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.animate-hover-lift:hover {
+  animation: hoverLift var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-hover-scale {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.animate-hover-scale:hover {
+  animation: hoverScale var(--duration-normal) var(--ease-out) forwards;
+}
+
+/* 状态动画类 */
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-pulse-fast {
+  animation: pulseFast 1s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounceSubtle 0.6s ease-out infinite;
+}
+
+/* 加载动画类 */
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-base) 0%,
+    var(--bg-elevated) 50%,
+    var(--bg-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background: linear-gradient(
+    90deg,
+    var(--accent-primary) 0%,
+    var(--accent-hover) 50%,
+    var(--accent-primary) 100%
+  );
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+}
+
+.animate-dot-pulse > * {
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+.animate-dot-pulse > *:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.animate-dot-pulse > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.animate-dot-pulse > *:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* 交互动画类 */
+.animate-tap {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.animate-tap:active {
+  animation: tapScale var(--duration-fast) var(--ease-out) forwards;
+}
+
+/* 特殊效果类 */
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+.animate-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+.animate-count-up {
+  animation: countUp 0.6s var(--ease-out) forwards;
+}
+
+/* ============================================
+   8. 动画延迟
+   ============================================ */
+
+.delay-75 { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* Stagger 动画（交错动画） */
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* ============================================
+   9. 动画性能优化
+   ============================================ */
+
+/* 使用 transform 和 opacity 进行动画 */
+.performance-optimized {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* 减少动画（无障碍） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   10. 动效设计指南
+   ============================================ */
+
+/*
+  🎯 动效原则：
+
+  1. 有意义
+     - 动效应该帮助用户理解界面，而不是装饰
+     - 每个动画都应该有明确的目的
+
+  2. 流畅
+     - 使用 60fps 的动画
+     - 避免跳动或卡顿
+     - 选择合适的缓动函数
+
+  3. 克制
+     - 不要过度使用动画
+     - 简洁的动效往往更有效
+     - 避免花哨的特效
+
+  4. 一致
+     - 整个应用使用统一的动效语言
+     - 类似的交互使用类似的动画
+
+  📝 推荐的缓动函数：
+
+  - 标准过渡: cubic-bezier(0.4, 0, 0.2, 1)
+  - 弹性效果: cubic-bezier(0.34, 1.56, 0.64, 1)
+  - 进入动画: cubic-bezier(0, 0, 0.2, 1)
+  - 退出动画: cubic-bezier(0.4, 0, 1, 1)
+
+  ⏱️ 推荐的时长：
+
+  - 微交互: 100-150ms
+  - 标准过渡: 200-300ms
+  - 页面过渡: 300-500ms
+  - 大元素动画: 500ms+
+*/

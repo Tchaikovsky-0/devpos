@@ -1,0 +1,25 @@
+# 开发环境 Dockerfile - 支持热加载
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# 安装开发工具
+RUN apk add --no-cache gcc musl-dev git curl
+
+# 安装 Air - Go 热加载工具
+RUN go install github.com/cosmtrek/air@latest
+
+# 复制 go.mod 和 go.sum
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 暴露端口
+EXPOSE 8094
+
+# 使用 Air 启动热加载
+CMD ["air", "-c", ".air.toml"]
