@@ -42,6 +42,7 @@ export const ReportDialog: React.FC<ReportDialogProps> = ({
   open,
   onOpenChange,
   selectedPhotos,
+  defectResults = [],
 }) => {
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('daily');
   const [isGenerating, setIsGenerating] = useState(false);
