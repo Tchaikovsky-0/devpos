@@ -506,6 +506,95 @@ func (s *DefectCaseService) AddEvidence(tenantID string, caseID uint, evidence m
 	return &evidence, nil
 }
 
+// --- Batch Save Evidence from Media Analysis ---
+
+// DefectEvidenceInput represents a single defect region from AI analysis
+type DefectEvidenceInput struct {
+	BBox       []float64 `json:"bbox" binding:"required"`        // [x1, y1, x2, y2] normalized 0-1
+	DefectType string    `json:"defect_type" binding:"required"` // e.g., "crack", "intrusion"
+	Family    string    `json:"family" binding:"required"`    // e.g., "security", "structure"
+	Severity  string    `json:"severity"`                      // "low", "medium", "high", "critical"
+	Confidence float64   `json:"confidence"`                     // 0-1
+	Confirmed  bool     `json:"confirmed"`                     // user confirmed
+}
+
+// SaveEvidenceFromMediaAnalysis saves confirmed defect evidence from AI media analysis
+func (s *DefectCaseService) SaveEvidenceFromMediaAnalysis(tenantID string, userID uint, mediaID uint, family, defectType string, severity string, confidence float64, bbox []float64) (*model.DefectEvidence, error) {
+	// Find or create a defect case for this media
+	defectCase, err := s.findOrCreateCaseFromMedia(tenantID, userID, mediaID, family, defectType, severity)
+	if err != nil {
+		return nil, err
+	}
+
+	// Serialize bbox to JSON
+	bboxJSON, err := json.Marshal(bbox)
+	if err != nil {
+		return nil, fmt.Errorf("serialize bbox: %w", err)
+	}
+
+	// Create evidence record
+	evidence := model.DefectEvidence{
+		TenantID:   tenantID,
+		CaseID:     defectCase.ID,
+		Source:     "ai", // AI detected
+		MediaID:    &mediaID,
+		Family:     model.DefectFamily(family),
+		DefectType: model.DefectType(defectType),
+		Confidence: confidence,
+		BBox:       string(bboxJSON),
+		Timestamp:  time.Now(),
+	}
+
+	if err := s.db.Create(&evidence).Error; err != nil {
+		return nil, fmt.Errorf("create evidence: %w", err)
+	}
+
+	// Update case statistics
+	s.db.Model(defectCase).Updates(map[string]interface{}{
+		"evidence_count": gorm.Expr("evidence_count + 1"),
+		"last_seen_at":   time.Now(),
+	})
+
+	return &evidence, nil
+}
+
+// findOrCreateCaseFromMedia finds or creates a defect case for a given media
+func (s *DefectCaseService) findOrCreateCaseFromMedia(tenantID string, userID uint, mediaID uint, family, defectType string, severity string) (*model.DefectCase, error) {
+	// Check if there's already a case for this media with the same defect type
+	var existingCase model.DefectCase
+	err := s.db.Where(
+		"tenant_id = ? AND family = ? AND defect_type = ? AND status != ?",
+		tenantID, family, defectType, model.DefectCaseStatusClosed,
+	).First(&existingCase).Error
+
+	if err == nil {
+		// Found existing case, return it
+		return &existingCase, nil
+	}
+
+	if err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("query existing case: %w", err)
+	}
+
+	// Create new case
+	newCase := &model.DefectCase{
+		TenantID:    tenantID,
+		Title:       fmt.Sprintf("AI检测 - %s - %s", family, defectType),
+		Family:      model.DefectFamily(family),
+		DefectType:  model.DefectType(defectType),
+		Severity:    model.Severity(severity),
+		Status:      model.DefectCaseStatusDraft,
+		FirstSeenAt: time.Now(),
+		LastSeenAt:  time.Now(),
+	}
+
+	if err := s.db.Create(newCase).Error; err != nil {
+		return nil, fmt.Errorf("create case: %w", err)
+	}
+
+	return newCase, nil
+}
+
 // --- Report Draft ---
 
 func (s *DefectCaseService) CreateReportDraft(tenantID string, caseID uint, req CreateReportDraftRequest) (*model.ReportDraft, error) {

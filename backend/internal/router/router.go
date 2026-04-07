@@ -343,6 +343,7 @@ func (r *Router) Setup() {
 				defectCases.POST("/:id/split", defectCaseHandler.SplitCase)
 				defectCases.PUT("/:id/representative", defectCaseHandler.SetRepresentative)
 				defectCases.POST("/:id/evidence", defectCaseHandler.AddEvidence)
+				defectCases.POST("/evidences", defectCaseHandler.SaveEvidence) // Save evidence from media analysis
 
 				// 报告草稿
 				defectCases.POST("/:id/drafts", defectCaseHandler.CreateReportDraft)

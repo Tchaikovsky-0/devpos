@@ -39,6 +39,19 @@ export interface DefectAnalysisResult {
 
 export type DefectAnalysisResponse = DefectAnalysisResult[];
 
+// DefectEvidence type for saving confirmed defects
+export interface DefectEvidenceResponse {
+  id: number;
+  case_id: number;
+  media_id: number;
+  family: string;
+  defect_type: string;
+  severity: string;
+  confidence: number;
+  bbox: number[];
+  created_at: string;
+}
+
 // Re-export types for backward compatibility
 export type { MediaItem, FolderItem, StorageInfo };
 
@@ -239,6 +252,18 @@ export const mediaApi = baseApi.injectEndpoints({
     generateReport: builder.mutation<{ code: number; data: unknown }, { media_ids: number[]; report_type?: string }>({
       query: (body) => ({ url: '/media/report', method: 'POST', body }),
     }),
+
+    /** 保存缺陷证据（从AI分析确认后） */
+    saveDefectEvidence: builder.mutation<{ code: number; data: DefectEvidenceResponse }, {
+      media_id: number;
+      family: string;
+      defect_type: string;
+      severity: string;
+      confidence: number;
+      bbox: number[];
+    }>({
+      query: (body) => ({ url: '/defect-cases/evidences', method: 'POST', body }),
+    }),
   }),
 });
 
@@ -264,4 +289,5 @@ export const {
   useAnalyzeMediaMutation,
   useDefectAnalyzeMediaMutation,
   useGenerateReportMutation,
+  useSaveDefectEvidenceMutation,
 } = mediaApi;

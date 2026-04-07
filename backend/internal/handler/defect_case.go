@@ -288,6 +288,38 @@ func (h *DefectCaseHandler) AddEvidence(c *gin.Context) {
 	response.Created(c, result)
 }
 
+// --- Save Evidence from Media Analysis ---
+
+func (h *DefectCaseHandler) SaveEvidence(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+
+	var req struct {
+		MediaID    uint     `json:"media_id" binding:"required"`
+		Family     string   `json:"family" binding:"required"`
+		DefectType string   `json:"defect_type" binding:"required"`
+		Severity   string   `json:"severity" binding:"required"`
+		Confidence float64  `json:"confidence"`
+		BBox       []float64 `json:"bbox" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	evidence, err := h.caseService.SaveEvidenceFromMediaAnalysis(
+		tenantID, userID, req.MediaID, req.Family, req.DefectType,
+		req.Severity, req.Confidence, req.BBox,
+	)
+	if err != nil {
+		response.InternalError(c, "failed to save evidence: "+err.Error())
+		return
+	}
+
+	response.Created(c, evidence)
+}
+
 // --- Statistics ---
 
 func (h *DefectCaseHandler) Statistics(c *gin.Context) {

@@ -28,7 +28,7 @@ import {
   type Severity,
 } from '@/types/api/defectCase';
 import { cn } from '@/lib/utils';
-import { useDefectAnalyzeMediaMutation } from '@/store/api/mediaApi';
+import { useDefectAnalyzeMediaMutation, useSaveDefectEvidenceMutation } from '@/store/api/mediaApi';
 
 /** Photo type matching Gallery/index.tsx */
 export interface Photo {
@@ -352,6 +352,7 @@ export const DefectAnalyzeDialog: React.FC<DefectAnalyzeDialogProps> = ({
   const imageRef = useRef<HTMLDivElement>(null);
 
   const [defectAnalyze] = useDefectAnalyzeMediaMutation();
+  const [saveEvidence] = useSaveDefectEvidenceMutation();
 
   const currentPhoto = photosWithRegions[currentIndex];
   const selectedRegion = currentPhoto?.regions.find((r) => r.id === selectedRegionId) ?? null;
@@ -481,7 +482,30 @@ export const DefectAnalyzeDialog: React.FC<DefectAnalyzeDialogProps> = ({
     onOpenChange(false);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    // Save all confirmed defects as evidence
+    const savePromises: Promise<unknown>[] = [];
+
+    for (const pw of photosWithRegions) {
+      for (const region of pw.regions.filter((r) => r.confirmed)) {
+        savePromises.push(
+          saveEvidence({
+            media_id: pw.photo.id,
+            family: region.family,
+            defect_type: region.defectType,
+            severity: region.severity,
+            confidence: region.confidence,
+            bbox: region.bbox,
+          }).unwrap().catch((err) => {
+            console.error('Failed to save evidence:', err);
+          })
+        );
+      }
+    }
+
+    // Wait for all saves to complete (non-blocking)
+    await Promise.all(savePromises);
+
     const results: DefectAnalysisResult[] = photosWithRegions.map((pw) => ({
       photoId: pw.photo.id,
       regions: pw.regions.filter((r) => r.confirmed),
