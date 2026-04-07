@@ -1,0 +1,10 @@
+._*
+.dockerignore
+tmp/
+bin/
+vendor/
+.git/
+*.md
+node_modules/
+dist/
+.vite/

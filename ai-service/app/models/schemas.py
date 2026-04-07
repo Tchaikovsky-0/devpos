@@ -84,6 +84,7 @@ class ChatRequest(BaseModel):
     model: Optional[str] = None
     stream_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -91,6 +92,28 @@ class ChatResponse(BaseModel):
     message: ChatMessage
     model: str
     usage: Optional[Dict[str, int]] = None
+    session_id: Optional[str] = None
+    suggestions: Optional[List[str]] = None
+
+
+class SessionSummary(BaseModel):
+    """Chat session summary"""
+    id: str
+    title: str
+    last_message: str
+    message_count: int
+    created_at: str
+    updated_at: str
+
+
+class SessionDetail(BaseModel):
+    """Chat session detail with messages"""
+    id: str
+    title: str
+    messages: List[ChatMessage]
+    message_count: int
+    created_at: str
+    updated_at: str
 
 
 # ============================================================================
@@ -160,3 +183,26 @@ class ModelInfo(BaseModel):
 class ModelsResponse(BaseModel):
     """List of available models"""
     models: List[ModelInfo]
+
+
+# ============================================================================
+# Root Cause / Trend Models
+# ============================================================================
+
+
+class RootCauseResult(BaseModel):
+    """Root cause analysis result"""
+    alert_type: str
+    probable_causes: List[str]
+    confidence: float
+    recommendations: List[str]
+    severity: str = "info"
+
+
+class TrendResult(BaseModel):
+    """Trend analysis result"""
+    metric: str
+    trend_direction: str  # up, down, stable
+    change_percentage: float
+    forecast: str
+    recommendations: List[str]

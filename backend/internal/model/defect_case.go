@@ -16,16 +16,36 @@ const (
 type DefectType string
 
 const (
-	DefectTypeIntrusion  DefectType = "intrusion"   // 入侵
-	DefectTypeFire       DefectType = "fire"        // 火情
-	DefectTypeAlgae      DefectType = "algae"       // 蓝藻
-	DefectTypeCrack      DefectType = "crack"       // 裂缝
-	DefectTypeWallDamage DefectType = "wall_damage" // 墙损
-	DefectTypeStairDamage DefectType = "stair_damage" // 楼梯损伤
-	DefectTypeVehicle    DefectType = "vehicle"     // 车辆异常
-	DefectTypePersonnel  DefectType = "personnel"   // 人员异常
-	DefectTypeLeak       DefectType = "leak"        // 泄漏
-	DefectTypeOther      DefectType = "other"       // 其他
+	// 安全类 (security)
+	DefectTypeIntrusion  DefectType = "intrusion"           // 入侵（人员闯入）
+	DefectTypeFire       DefectType = "fire"                // 火情（火焰/烟雾）
+
+	// 环境类 (env)
+	DefectTypeAlgae          DefectType = "algae"               // 蓝藻/水面污染
+	DefectTypeWaterPollution DefectType = "water_pollution"    // 水体污染（油污/废水）
+	DefectTypeWasteAccum     DefectType = "waste_accumulation" // 固废堆积
+	DefectTypeGasLeak        DefectType = "gas_leak"          // 气体泄漏
+	DefectTypeSmoke          DefectType = "smoke"              // 烟雾
+
+	// 结构类 (structure)
+	DefectTypeCrack      DefectType = "crack"            // 裂缝
+	DefectTypeWallDamage DefectType = "wall_damage"     // 墙损
+	DefectTypeStairDamage DefectType = "stair_damage"   // 楼梯损伤
+	DefectTypeCorrosion  DefectType = "corrosion"      // 金属腐蚀
+	DefectTypeDeformation DefectType = "deformation"    // 结构变形
+	DefectTypeSeepage    DefectType = "seepage"        // 渗水
+
+	// 设备类 (equipment)
+	DefectTypeVehicle         DefectType = "vehicle"              // 车辆异常
+	DefectTypePersonnel       DefectType = "personnel"            // 人员异常
+	DefectTypeMeterAbnormal   DefectType = "meter_abnormal"      // 仪表读数异常
+	DefectTypeVibrationAbnor DefectType = "vibration_abnormal" // 振动异常
+	DefectTypeTempExceed      DefectType = "temperature_exceed"  // 温度超标
+	DefectTypeSealDamage      DefectType = "seal_damage"        // 密封损坏
+
+	// 其他
+	DefectTypeLeak  DefectType = "leak"  // 泄漏
+	DefectTypeOther DefectType = "other" // 其他
 )
 
 // DefectCaseStatus 缺陷案例状态

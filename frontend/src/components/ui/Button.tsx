@@ -6,34 +6,34 @@ import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
   [
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg',
-    'text-sm font-medium transition-all duration-normal',
-    'focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
-    'active:translate-y-px',
+    'inline-flex items-center justify-center gap-2 whitespace-nowrap',
+    'text-sm font-semibold tracking-[-0.01em] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary',
+    'disabled:pointer-events-none disabled:opacity-50',
   ].join(' '),
   {
     variants: {
       variant: {
         default:
-          'bg-accent text-white shadow-panel hover:bg-accent-hover',
+          'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-md hover:translate-y-[-1px] hover:shadow-lg hover:from-blue-300 hover:to-blue-600 active:translate-y-0 active:shadow-md',
         primary:
-          'bg-accent text-white shadow-panel hover:bg-accent-hover',
+          'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-md hover:translate-y-[-1px] hover:shadow-lg hover:from-blue-300 hover:to-blue-600 active:translate-y-0 active:shadow-md',
         destructive:
-          'bg-error text-white shadow-panel hover:bg-error/90',
+          'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md hover:translate-y-[-1px] hover:shadow-lg hover:from-red-400 hover:to-red-600 active:translate-y-0 active:shadow-md',
         outline:
-          'border border-border bg-transparent text-text-primary hover:border-border-emphasis hover:bg-bg-surface',
+          'border border-border-subtle bg-bg-elevated text-text-primary hover:border-border hover:bg-bg-tertiary hover:translate-y-[-1px] active:translate-y-0',
         secondary:
-          'surface-panel-muted text-text-primary hover:bg-bg-hover',
+          'bg-bg-elevated text-text-primary border border-border-subtle hover:bg-bg-tertiary hover:border-border hover:translate-y-[-1px] active:translate-y-0',
         ghost:
-          'text-text-secondary hover:bg-bg-surface hover:text-text-primary',
+          'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
         link:
-          'rounded-none px-0 text-accent hover:text-accent-hover',
+          'rounded-none px-0 text-accent hover:text-accent-light underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-10 px-4',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-11 px-5 text-sm',
-        icon: 'h-9 w-9',
+        default: 'h-10 px-5 rounded-md',
+        sm: 'h-8 px-4 rounded-sm text-xs',
+        lg: 'h-11 px-6 text-sm rounded-md',
+        icon: 'h-9 w-9 rounded-md',
       },
     },
     defaultVariants: {

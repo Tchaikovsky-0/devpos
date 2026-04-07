@@ -1,5 +1,5 @@
 // =============================================================================
-// Dashboard API Slice - 数据大屏 API
+// Dashboard API Slice - 监控大屏 API
 // =============================================================================
 
 import { baseApi } from './baseApi';
@@ -39,6 +39,11 @@ export interface TopAlert {
   type: string;
   count: number;
   level: 'INFO' | 'WARN' | 'CRIT';
+  title?: string;
+  description?: string;
+  message?: string;
+  created_at?: string;
+  timestamp?: string;
 }
 
 export interface DashboardActivity {

@@ -1,0 +1,17 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: app.spec.ts >> Xunjianbao E2E Tests >> Dashboard >> should display dashboard with statistics
+- Location: tests/e2e/app.spec.ts:52:5
+
+# Error details
+
+```
+Error: Error reading storage state from tests/e2e/auth-state.json:
+ENOENT: no such file or directory, open 'tests/e2e/auth-state.json'
+```

@@ -21,7 +21,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', 'node_modules'],
+  ignorePatterns: ['dist', 'node_modules', 'playwright.config.*'],
   rules: {
     'react-refresh/only-export-components': 'off',
   },

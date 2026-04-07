@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS alert_rules (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    description TEXT,
+    type VARCHAR(64) NOT NULL,
+    conditions TEXT NOT NULL,
+    actions TEXT NOT NULL,
+    severity VARCHAR(16) NOT NULL DEFAULT 'warning',
+    enabled TINYINT(1) DEFAULT 1,
+    cooldown_sec INT DEFAULT 300,
+    last_fired_at DATETIME NULL,
+    created_by BIGINT UNSIGNED,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    INDEX idx_tenant_enabled (tenant_id, enabled),
+    INDEX idx_type (type),
+    INDEX idx_deleted_at (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

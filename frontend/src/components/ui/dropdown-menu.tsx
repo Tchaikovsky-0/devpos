@@ -73,8 +73,8 @@ const DropdownMenuItem = forwardRef<HTMLButtonElement, DropdownMenuItemProps>(
         type="button"
         ref={ref}
         className={cn(
-          'relative flex w-full select-none items-center gap-2 rounded-[14px] px-3 py-2 text-left text-sm text-text-primary transition-colors',
-          'hover:bg-bg-surface hover:text-text-primary focus-visible:bg-bg-surface',
+          'relative flex w-full select-none items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-text-primary transition-colors duration-150',
+          'hover:bg-bg-tertiary hover:text-text-primary focus-visible:outline-none focus-visible:bg-bg-tertiary',
           className,
         )}
         onClick={handleClick}
@@ -224,7 +224,7 @@ const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuContentProps>
           assignRef(ref, node);
         }}
         className={cn(
-          'fixed z-[95] min-w-[12rem] overflow-hidden rounded-[18px] surface-float p-1.5 animate-fade-in',
+          'fixed z-[95] min-w-[12rem] overflow-hidden rounded-lg bg-bg-secondary border border-border-subtle shadow-lg p-1.5 animate-in zoom-in-95 duration-150',
           className,
         )}
         style={{ top: position.top, left: position.left }}
@@ -243,7 +243,7 @@ const DropdownMenuSeparator = forwardRef<HTMLDivElement, DropdownMenuSeparatorPr
     return (
       <div
         ref={ref}
-        className={cn('-mx-1 my-1 h-px bg-border/70', className)}
+        className={cn('-mx-1 my-1 h-px bg-border', className)}
         {...props}
       />
     );

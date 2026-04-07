@@ -4,7 +4,7 @@
 
 import type { Alert, AlertLevel, AlertStatus } from '../api/alerts';
 
-export interface AlertFilter {
+export interface AlertStoreFilter {
   level?: AlertLevel;
   status?: AlertStatus;
   keyword?: string;
@@ -17,5 +17,5 @@ export interface AlertState {
   page: number;
   pageSize: number;
   loading: boolean;
-  filter: AlertFilter;
+  filter: AlertStoreFilter;
 }

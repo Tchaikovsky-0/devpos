@@ -2,12 +2,19 @@
  * WebSocket Service - WebSocket 连接管理
  *
  * 支持实时告警、YOLO 检测结果推送
+ * - 连接时自动携带 JWT token
+ * - 指数退避自动重连（最大 30s）
+ * - 30s 心跳 ping
  */
 
 export type WebSocketMessageType =
   | 'alert'
+  | 'alert_new'
+  | 'alert_update'
   | 'yolo-detection'
+  | 'yolo_detection'
   | 'stream-status'
+  | 'stream_status'
   | 'ping'
   | 'pong';
 
@@ -18,7 +25,7 @@ export interface WebSocketMessage {
 }
 
 export interface AlertMessage {
-  type: 'alert';
+  type: 'alert' | 'alert_new';
   payload: {
     id: string;
     level: 'P0' | 'P1' | 'P2' | 'P3';
@@ -32,7 +39,7 @@ export interface AlertMessage {
 }
 
 export interface YOLODetectionMessage {
-  type: 'yolo-detection';
+  type: 'yolo-detection' | 'yolo_detection';
   payload: {
     stream_id: string;
     timestamp: string;
@@ -45,7 +52,7 @@ export interface YOLODetectionMessage {
 }
 
 export interface StreamStatusMessage {
-  type: 'stream-status';
+  type: 'stream-status' | 'stream_status';
   payload: {
     stream_id: string;
     status: 'online' | 'offline' | 'connecting' | 'error';
@@ -56,16 +63,36 @@ type MessageHandler = (message: WebSocketMessage) => void;
 
 class WebSocketService {
   private ws: WebSocket | null = null;
-  private url: string;
+  private baseUrl: string;
   private handlers: Map<WebSocketMessageType, Set<MessageHandler>> = new Map();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private maxReconnectAttempts = 10;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingInterval: number | null = null;
   private isConnecting = false;
+  private manualDisconnect = false;
 
-  constructor(url: string) {
-    this.url = url;
+  /** Maximum reconnect delay in milliseconds */
+  private readonly MAX_RECONNECT_DELAY = 30_000;
+  /** Base delay for exponential backoff */
+  private readonly BASE_RECONNECT_DELAY = 1_000;
+  /** Ping interval in milliseconds */
+  private readonly PING_INTERVAL = 30_000;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Build the WS URL with JWT token query param
+   */
+  private buildUrl(): string {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const separator = this.baseUrl.includes('?') ? '&' : '?';
+      return `${this.baseUrl}${separator}token=${encodeURIComponent(token)}`;
+    }
+    return this.baseUrl;
   }
 
   /**
@@ -79,14 +106,17 @@ class WebSocketService {
       }
 
       this.isConnecting = true;
+      this.manualDisconnect = false;
 
       try {
-        this.ws = new WebSocket(this.url);
+        const url = this.buildUrl();
+        this.ws = new WebSocket(url);
 
         this.ws.onopen = () => {
           this.isConnecting = false;
           this.reconnectAttempts = 0;
           this.startPing();
+          console.info('[WebSocket] Connected');
           resolve();
         };
 
@@ -104,10 +134,13 @@ class WebSocketService {
           this.isConnecting = false;
         };
 
-        this.ws.onclose = () => {
+        this.ws.onclose = (event) => {
           this.isConnecting = false;
           this.stopPing();
-          this.handleReconnect();
+          console.warn(`[WebSocket] Closed (code=${event.code})`);
+          if (!this.manualDisconnect) {
+            this.handleReconnect();
+          }
         };
       } catch (err) {
         this.isConnecting = false;
@@ -120,7 +153,9 @@ class WebSocketService {
    * 断开连接
    */
   disconnect(): void {
+    this.manualDisconnect = true;
     this.stopPing();
+    this.clearReconnectTimer();
     if (this.ws) {
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
@@ -155,17 +190,33 @@ class WebSocketService {
   }
 
   /**
-   * 处理接收到的消息
+   * 处理接收到的消息 — 同时派发到规范化和带下划线的键
    */
   private handleMessage(message: WebSocketMessage): void {
+    // Direct type match
     const handlers = this.handlers.get(message.type);
     if (handlers) {
       handlers.forEach(handler => handler(message));
     }
+
+    // Normalise underscore ↔ dash aliases so both naming styles trigger handlers
+    const aliasMap: Record<string, WebSocketMessageType> = {
+      'alert_new': 'alert',
+      'alert_update': 'alert',
+      'yolo_detection': 'yolo-detection',
+      'stream_status': 'stream-status',
+    };
+    const alias = aliasMap[message.type];
+    if (alias) {
+      const aliasHandlers = this.handlers.get(alias);
+      if (aliasHandlers) {
+        aliasHandlers.forEach(handler => handler(message));
+      }
+    }
   }
 
   /**
-   * 重新连接
+   * 指数退避重连（最大 30s）
    */
   private handleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
@@ -174,9 +225,14 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    const delay = Math.min(
+      this.BASE_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1),
+      this.MAX_RECONNECT_DELAY,
+    );
 
-    setTimeout(() => {
+    console.info(`[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+
+    this.reconnectTimer = setTimeout(() => {
       this.connect().catch(err => {
         console.error('[WebSocket] Reconnect failed:', err);
       });
@@ -184,12 +240,23 @@ class WebSocketService {
   }
 
   /**
-   * 发送 ping
+   * 清除重连计时器
+   */
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  /**
+   * 发送 ping（每 30 秒）
    */
   private startPing(): void {
+    this.stopPing();
     this.pingInterval = window.setInterval(() => {
       this.send({ type: 'ping', payload: null });
-    }, 30000);
+    }, this.PING_INTERVAL);
   }
 
   /**
@@ -211,7 +278,9 @@ class WebSocketService {
 }
 
 // 创建 WebSocket 服务实例
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8094';
+const WS_BASE_URL = import.meta.env.VITE_WS_URL
+  || import.meta.env.VITE_WS_BASE_URL
+  || 'ws://localhost:8094';
 
 export const wsService = new WebSocketService(`${WS_BASE_URL}/ws`);
 

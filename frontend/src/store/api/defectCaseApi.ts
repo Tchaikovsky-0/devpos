@@ -8,6 +8,7 @@ import type {
   DefectCaseDetail,
   DefectCaseListParams,
   DefectCaseStatistics,
+  DefectEvidence,
   ReportDraft,
   CreateDefectCaseRequest,
   UpdateDefectCaseRequest,
@@ -198,6 +199,19 @@ export const defectCaseApi = baseApi.injectEndpoints({
         'ReportDraft',
       ],
     }),
+
+    /** 添加证据 */
+    addEvidence: builder.mutation<
+      { code: number; data: DefectEvidence },
+      { caseId: number; body: { url: string; type?: string; caption?: string } }
+    >({
+      query: ({ caseId, body }) => ({
+        url: `/defect-cases/${caseId}/evidence`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { caseId }) => [{ type: 'DefectCase', id: caseId }],
+    }),
   }),
 });
 
@@ -216,6 +230,7 @@ export const {
   useSplitCaseMutation,
   useSetRepresentativeMutation,
   useGetDefectCaseStatisticsQuery,
+  useAddEvidenceMutation,
   useCreateReportDraftMutation,
   useGetReportDraftQuery,
   useUpdateReportDraftMutation,

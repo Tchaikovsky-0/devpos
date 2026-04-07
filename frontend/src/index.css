@@ -1,79 +1,190 @@
+/**
+ * 巡检宝 - 统一设计系统 v4.1
+ * 核心理念: 深空指挥台 (Deep Space Command)
+ * 设计哲学: 深邃暗色背景，悬浮面板，发光边缘，科技蓝强调色
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================
+   1. 设计 Token - 色彩系统 (单一真相源)
+   ============================================ */
 
 :root,
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --canvas: 13 18 24;
-  --surface: 18 24 32;
-  --surface-raised: 24 31 42;
-  --surface-muted: 33 42 54;
-  --surface-hover: 42 53 68;
-  --surface-subtle: 15 21 29;
-  --surface-void: 7 11 16;
+  /* ── 背景层次 (4层递进) ── */
+  --canvas: 13 18 24;           /* 最深层：页面背景 #0d1118 */
+  --surface: 18 24 32;          /* 深：卡片背景 #121820 */
+  --surface-raised: 24 31 42;   /* 提升：悬浮元素 #181f2a */
+  --surface-elevated: 33 42 54; /* 更高：菜单/弹窗 #212a36 */
+  --surface-muted: 42 53 68;    /* 悬停状态 #2a3544 */
+  --surface-hover: 48 60 77;    /* 激活状态 #303c4d */
+  --surface-subtle: 15 21 29;   /* 内嵌区域 #0f151d */
+  --surface-void: 7 11 16;      /* 最深 void #070b10 */
 
-  --border: 48 60 77;
-  --border-strong: 76 91 111;
-  --text-primary: 232 238 244;
-  --text-secondary: 154 167 185;
-  --text-tertiary: 109 122 139;
-  --accent: 91 130 201;
-  --accent-strong: 71 111 184;
+  /* ── 主强调色：科技蓝 ── */
+  --accent: 88 166 255;         /* #58a6ff */
+  --accent-strong: 71 111 184;  /* #476fb8 */
+  --accent-soft: 121 184 255;   /* #79b8ff */
 
-  --success: 85 165 121;
-  --warning: 208 159 91;
-  --error: 206 97 96;
-  --info: 108 155 222;
+  /* ── 功能色 ── */
+  --success: 85 165 121;        /* #55a579 */
+  --warning: 208 159 91;        /* #d09f5b */
+  --error: 248 81 73;           /* #f85149 */
+  --info: 108 155 222;          /* #6c9bde */
 
-  --shadow-soft: 0 18px 50px rgba(4, 8, 14, 0.28);
+  /* ── 文字层次 ── */
+  --text-primary: 232 238 244;   /* #e8eef4 */
+  --text-secondary: 154 167 185; /* #9aa7b9 */
+  --text-tertiary: 109 122 139;  /* #6d7a8b */
+  --text-disabled: 72 79 88;     /* #484f58 */
+
+  /* ── 边框层次 ── */
+  --border: 48 60 77;            /* #303c4d */
+  --border-strong: 76 91 111;    /* #4c5b6f */
+  --border-hover: 108 122 139;   /* #6c7a8b */
+  --border-accent: 88 166 255;   /* #58a6ff */
+
+  /* ── 统一圆角系统 (5档) ── */
+  --radius-sm: 0.375rem;   /* 6px - 标签、小按钮 */
+  --radius-md: 0.5rem;     /* 8px - 标准按钮、输入框 */
+  --radius-lg: 0.75rem;    /* 12px - 卡片、面板 */
+  --radius-xl: 1.25rem;    /* 20px - 大面板、模态框 */
+  --radius-2xl: 1.75rem;   /* 28px - 超大容器 */
+  --radius-full: 9999px;   /* 完全圆角 */
+
+  /* ── 间距系统 ── */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+
+  /* ── 三层阴影系统 ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);                    /* 环境光 */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);               /* 基础悬浮 */
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);                   /* 悬浮 */
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);             /* 强悬浮 */
+  --shadow-glow: 0 0 20px rgba(88, 166, 255, 0.15);             /* 聚焦辉光 */
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(88, 166, 255, 0.1);
   --shadow-panel: 0 10px 24px rgba(5, 9, 16, 0.18);
+  --shadow-soft: 0 18px 50px rgba(4, 8, 14, 0.28);
+
+  /* ── 过渡动画 ── */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-index 层级 ── */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-backdrop: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-tooltip: 1600;
 }
 
 [data-theme='light'] {
   color-scheme: light;
 
+  /* ── 背景层次 ── */
   --canvas: 244 247 251;
   --surface: 251 253 255;
   --surface-raised: 245 248 252;
-  --surface-muted: 235 241 246;
-  --surface-hover: 226 234 241;
+  --surface-elevated: 235 241 246;
+  --surface-muted: 226 234 241;
+  --surface-hover: 205 216 227;
   --surface-subtle: 239 244 248;
   --surface-void: 226 233 241;
 
-  --border: 205 216 227;
-  --border-strong: 174 188 203;
-  --text-primary: 22 34 47;
-  --text-secondary: 88 102 121;
-  --text-tertiary: 121 136 154;
+  /* ── 主强调色 ── */
   --accent: 72 109 183;
   --accent-strong: 54 88 157;
+  --accent-soft: 99 102 241;
 
+  /* ── 功能色 ── */
   --success: 66 140 101;
   --warning: 176 125 49;
   --error: 189 78 78;
   --info: 76 120 191;
 
-  --shadow-soft: 0 18px 48px rgba(88, 104, 128, 0.12);
+  /* ── 文字层次 ── */
+  --text-primary: 22 34 47;
+  --text-secondary: 88 102 121;
+  --text-tertiary: 121 136 154;
+  --text-disabled: 203 213 225;
+
+  /* ── 边框层次 ── */
+  --border: 205 216 227;
+  --border-strong: 174 188 203;
+  --border-hover: 148 163 184;
+  --border-accent: 72 109 183;
+
+  /* ── 阴影系统 ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(72, 109, 183, 0.15);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 20px rgba(72, 109, 183, 0.1);
   --shadow-panel: 0 8px 18px rgba(96, 113, 137, 0.08);
+  --shadow-soft: 0 18px 48px rgba(88, 104, 128, 0.12);
 }
 
-@layer base {
-  :root {
-    --bg-primary: rgb(var(--canvas));
-    --bg-secondary: rgb(var(--surface));
-    --bg-tertiary: rgb(var(--surface-raised));
-    --bg-hover: rgb(var(--surface-muted));
-    --bg-active: rgb(var(--surface-hover));
-    --bg-darkest: rgb(var(--surface-void));
-    --border-primary: rgb(var(--border));
-    --border-secondary: rgb(var(--border-strong));
-    --accent-primary: rgb(var(--accent));
-    --accent-secondary: rgb(var(--accent-strong));
-    --accent-muted: rgb(var(--accent) / 0.14);
-  }
+/* ============================================
+   2. 兼容性变量映射 (用于兼容旧代码)
+   ============================================ */
 
+:root {
+  /* 背景映射 */
+  --bg-void: rgb(var(--canvas));
+  --bg-deepest: rgb(var(--canvas));
+  --bg-deep: rgb(var(--surface));
+  --bg-base: rgb(var(--surface-raised));
+  --bg-elevated: rgb(var(--surface-elevated));
+  --bg-surface: rgb(var(--surface-raised));
+  --bg-hover: rgb(var(--surface-muted));
+  --bg-active: rgb(var(--surface-hover));
+  --bg-darkest: rgb(var(--surface-void));
+
+  /* 文字映射 */
+  --bg-primary: rgb(var(--canvas));
+  --bg-secondary: rgb(var(--surface));
+  --bg-tertiary: rgb(var(--surface-raised));
+
+  /* 强调色映射 */
+  --accent-primary: rgb(var(--accent));
+  --accent-secondary: rgb(var(--accent-strong));
+  --accent-muted: rgb(var(--accent) / 0.14);
+
+  /* 功能色映射 */
+  --success-primary: rgb(var(--success));
+  --warning-primary: rgb(var(--warning));
+  --error-primary: rgb(var(--error));
+  --info-primary: rgb(var(--info));
+
+  /* 边框映射 */
+  --border-primary: rgb(var(--border));
+  --border-secondary: rgb(var(--border-strong));
+}
+
+/* ============================================
+   3. 基础样式
+   ============================================ */
+
+@layer base {
   * {
     box-sizing: border-box;
     border-color: rgb(var(--border) / 0.72);
@@ -89,38 +200,23 @@
 
   html {
     background: rgb(var(--canvas));
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    font-family:
-      'Inter Variable',
-      'Inter',
-      'Noto Sans SC',
-      'PingFang SC',
-      'Hiragino Sans GB',
-      'Microsoft YaHei',
-      sans-serif;
-    background:
-      radial-gradient(circle at top left, rgb(var(--accent) / 0.08), transparent 26%),
-      linear-gradient(180deg, rgb(var(--canvas)) 0%, rgb(var(--surface-subtle)) 100%);
+    font-family: 'Inter Variable', 'Inter', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: radial-gradient(circle at top left, rgb(var(--accent) / 0.06), transparent 30%),
+                linear-gradient(180deg, rgb(var(--canvas)) 0%, rgb(var(--surface-subtle)) 100%);
     color: rgb(var(--text-primary));
     font-size: 14px;
     line-height: 1.5;
     letter-spacing: -0.01em;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    transition:
-      background-color 180ms ease,
-      color 180ms ease;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     margin: 0;
     font-weight: 600;
     letter-spacing: -0.03em;
@@ -135,23 +231,18 @@
     text-decoration: none;
   }
 
-  button,
-  input,
-  textarea,
-  select {
+  button, input, textarea, select {
     font: inherit;
   }
 
   ::selection {
-    background: rgb(var(--accent) / 0.2);
+    background: rgb(var(--accent) / 0.25);
     color: rgb(var(--text-primary));
   }
 
   :focus-visible {
     outline: none;
-    box-shadow:
-      0 0 0 1px rgb(var(--accent) / 0.7),
-      0 0 0 4px rgb(var(--accent) / 0.12);
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.7), 0 0 0 4px rgb(var(--accent) / 0.12);
   }
 
   ::placeholder {
@@ -161,73 +252,94 @@
   :disabled {
     cursor: not-allowed;
   }
-
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: rgb(var(--surface-muted));
-    border: 2px solid transparent;
-    border-radius: 999px;
-    background-clip: padding-box;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--surface-hover));
-    background-clip: padding-box;
-  }
-
-  kbd {
-    font-family:
-      'SF Mono',
-      'JetBrains Mono',
-      'Fira Code',
-      'Roboto Mono',
-      monospace;
-  }
 }
 
+/* ============================================
+   4. 滚动条样式
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--surface-muted));
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--surface-hover));
+  background-clip: padding-box;
+}
+
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--surface-muted)) transparent;
+}
+
+/* ============================================
+   5. 组件样式
+   ============================================ */
+
 @layer components {
+  /* 面板组件 - 主要卡片 */
   .surface-panel {
     background: rgb(var(--surface));
     border: 1px solid rgb(var(--border) / 0.78);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-panel);
   }
 
+  /* 悬浮面板 */
   .surface-float {
     background: rgb(var(--surface));
     border: 1px solid rgb(var(--border) / 0.82);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-soft);
   }
 
+  /* 静音面板 */
   .surface-panel-muted {
     background: rgb(var(--surface-raised));
     border: 1px solid rgb(var(--border) / 0.65);
+    border-radius: var(--radius-md);
   }
 
+  /* 内嵌面板 */
   .surface-inset {
     background: rgb(var(--surface-subtle));
     border: 1px solid rgb(var(--border) / 0.58);
+    border-radius: var(--radius-md);
   }
 
+  /* 覆盖层 */
   .surface-overlay {
     background: rgb(var(--surface-void) / 0.95);
   }
 
-  .surface-divider {
-    border-color: rgb(var(--border) / 0.72);
+  /* 玻璃拟态面板 */
+  .glass-panel {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
+  /* 表单控件 */
   .field-control {
     background: rgb(var(--surface-subtle));
     border: 1px solid rgb(var(--border) / 0.72);
+    border-radius: var(--radius-md);
     color: rgb(var(--text-primary));
+    transition: all var(--duration-fast) var(--ease-out);
   }
 
   .field-control:hover {
@@ -236,11 +348,87 @@
 
   .field-control:focus-within {
     border-color: rgb(var(--accent) / 0.9);
-    box-shadow:
-      0 0 0 1px rgb(var(--accent) / 0.7),
-      0 0 0 4px rgb(var(--accent) / 0.12);
+    box-shadow: 0 0 0 1px rgb(var(--accent) / 0.7), 0 0 0 4px rgb(var(--accent) / 0.12);
+  }
+
+  /* 按钮基础样式 */
+  .btn {
+    border-radius: var(--radius-md);
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-hover);
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  /* 卡片悬停效果 */
+  .hover-lift {
+    transition: transform var(--duration-normal) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    border-color: rgb(var(--border-accent) / 0.3);
   }
 }
+
+/* ============================================
+   6. Tech-Industrial Minimalism CSS 变量层
+   与 design-system/tokens.ts 同步
+   ============================================ */
+
+:root {
+  /* ── TIM 设计系统 - 背景层 ── */
+  --tim-bg-primary: #020617;
+  --tim-bg-secondary: #0f172a;
+  --tim-bg-tertiary: #1e293b;
+
+  /* ── TIM 设计系统 - 表面层 ── */
+  --tim-surface-card: rgba(15, 23, 42, 0.8);
+  --tim-surface-border: rgba(255, 255, 255, 0.06);
+  --tim-surface-hover: rgba(255, 255, 255, 0.04);
+  --tim-surface-active: rgba(255, 255, 255, 0.08);
+
+  /* ── TIM 设计系统 - 语义化点缀色 ── */
+  --tim-accent-danger: #ef4444;
+  --tim-accent-success: #10b981;
+  --tim-accent-info: #3b82f6;
+  --tim-accent-warning: #f59e0b;
+
+  /* ── TIM 设计系统 - 文字层级 ── */
+  --tim-text-primary: #f8fafc;
+  --tim-text-secondary: #94a3b8;
+  --tim-text-tertiary: #64748b;
+  --tim-text-muted: #475569;
+
+  /* ── TIM 设计系统 - 发光阴影 ── */
+  --tim-glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);
+  --tim-glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
+  --tim-glow-info: 0 0 20px rgba(59, 130, 246, 0.3);
+  --tim-glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
+  --tim-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  /* ── TIM 设计系统 - 玻璃拟态 ── */
+  --tim-glass-bg: rgba(15, 23, 42, 0.7);
+  --tim-glass-blur: 12px;
+  --tim-glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --tim-glass-border-hover: 1px solid rgba(255, 255, 255, 0.12);
+
+  /* ── TIM 设计系统 - 缓动 ── */
+  --tim-ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --tim-ease-snappy: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ============================================
+   7. 动画工具类
+   ============================================ */
 
 @layer utilities {
   .animate-enter {
@@ -261,13 +449,8 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideIn {
@@ -275,7 +458,6 @@
     opacity: 0;
     transform: translateX(-8px);
   }
-
   to {
     opacity: 1;
     transform: translateX(0);
@@ -287,9 +469,108 @@
     opacity: 0;
     transform: translate3d(0, 14px, 0);
   }
-
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+  }
+}
+
+/* 脉冲光晕 */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px rgb(var(--accent) / 0.2); }
+  50% { box-shadow: 0 0 20px rgb(var(--accent) / 0.4); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* 骨架屏 */
+.skeleton {
+  background: linear-gradient(90deg, rgb(var(--surface-raised)) 25%, rgb(var(--surface-elevated)) 50%, rgb(var(--surface-raised)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── 告警角标脉冲动画 ── */
+@keyframes alert-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
+  }
+}
+
+.animate-alert-badge-pulse {
+  animation: alert-badge-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── 角标入场动画 ── */
+@keyframes badge-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-badge-enter {
+  animation: badge-enter 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ── 命令面板动画 ── */
+@keyframes palette-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes palette-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -12px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-palette-backdrop {
+  animation: palette-backdrop-in 150ms ease-out;
+}
+
+.animate-palette-panel {
+  animation: palette-panel-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================
+   8. TIM 玻璃拟态全局样式
+   ============================================ */
+
+@layer components {
+  .tim-glass {
+    background: var(--tim-glass-bg);
+    backdrop-filter: blur(var(--tim-glass-blur));
+    -webkit-backdrop-filter: blur(var(--tim-glass-blur));
+    border: var(--tim-glass-border);
+  }
+
+  .tim-glass-hover:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(15, 23, 42, 0.8);
   }
 }

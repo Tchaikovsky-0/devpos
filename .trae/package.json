@@ -1,0 +1,14 @@
+{
+  "name": "trae-utils",
+  "version": "1.0.0",
+  "description": "巡检宝项目工具和测试",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run --reporter=verbose"
+  },
+  "devDependencies": {
+    "vitest": "^1.2.0",
+    "jsdom": "^26.1.0"
+  }
+}

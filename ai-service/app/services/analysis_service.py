@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 
-from ..models.schemas import AnalysisRequest, AnalysisResponse
+from ..models.schemas import AnalysisRequest, AnalysisResponse, RootCauseResult, TrendResult
 
 
 class AnalysisService:
@@ -23,6 +23,146 @@ class AnalysisService:
     ):
         self.api_base_url = (api_base_url or os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")).rstrip("/")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
+
+    # ------------------------------------------------------------------
+    # Root cause analysis
+    # ------------------------------------------------------------------
+
+    async def analyze_root_cause(
+        self, alert_type: str, alert_level: str, description: str, location: Optional[str] = None
+    ) -> RootCauseResult:
+        """Analyze root cause of an alert."""
+        causes_db: Dict[str, Dict[str, Any]] = {
+            "fire": {
+                "causes": ["电气线路短路或老化", "可燃物堆放不当", "焊接作业未做好防护", "高温设备散热不良"],
+                "severity": "critical",
+                "recommendations": ["立即启动消防预案", "疏散现场人员", "检查电气线路", "清理可燃物"],
+            },
+            "intrusion": {
+                "causes": ["围栏破损或未关闭", "门禁系统故障", "未授权人员尾随进入", "监控盲区被利用"],
+                "severity": "warning",
+                "recommendations": ["核实入侵人员身份", "检查门禁和围栏", "调取入侵路径录像", "加强巡逻频次"],
+            },
+            "equipment_failure": {
+                "causes": ["设备长期运行未维护", "环境温度/湿度超标", "供电不稳定", "固件版本过旧"],
+                "severity": "warning",
+                "recommendations": ["排查设备故障原因", "检查供电和环境", "联系设备供应商", "启用备用设备"],
+            },
+            "defect": {
+                "causes": ["材料老化", "施工质量问题", "外力破坏", "设计缺陷"],
+                "severity": "warning",
+                "recommendations": ["标记缺陷位置", "评估结构安全性", "安排修复计划", "加强巡检频次"],
+            },
+        }
+
+        info = causes_db.get(alert_type, {
+            "causes": ["异常行为触发告警", "传感器数据异常", "环境变化引起误报"],
+            "severity": "info",
+            "recommendations": ["记录告警详情", "安排人工排查", "调整检测灵敏度"],
+        })
+
+        severity = info["severity"]
+        if alert_level in ("P0", "P1"):
+            severity = "critical"
+
+        return RootCauseResult(
+            alert_type=alert_type,
+            probable_causes=info["causes"],
+            confidence=0.82,
+            recommendations=info["recommendations"],
+            severity=severity,
+        )
+
+    # ------------------------------------------------------------------
+    # Device diagnostics
+    # ------------------------------------------------------------------
+
+    async def diagnose_device(
+        self, device_id: str, status: str, metrics: Optional[Dict[str, Any]] = None
+    ) -> AnalysisResponse:
+        """Diagnose a device based on its status and metrics."""
+        metrics = metrics or {}
+        issues: List[str] = []
+        recommendations: List[str] = []
+        severity = "info"
+
+        if status == "offline":
+            severity = "warning"
+            issues.append("设备离线")
+            recommendations.extend(["检查设备网络连接", "确认设备供电状态", "尝试远程重启设备"])
+        elif status == "error":
+            severity = "critical"
+            issues.append("设备报错")
+            recommendations.extend(["立即排查设备故障", "查看设备日志", "联系设备供应商"])
+
+        temp = metrics.get("temperature")
+        if temp and temp > 70:
+            issues.append(f"温度过高: {temp}°C")
+            severity = "critical"
+            recommendations.append("检查设备散热系统")
+        elif temp and temp > 55:
+            issues.append(f"温度偏高: {temp}°C")
+            if severity == "info":
+                severity = "warning"
+            recommendations.append("关注设备温度变化趋势")
+
+        uptime = metrics.get("uptime_hours", 0)
+        if uptime > 720:  # 30 days
+            recommendations.append(f"设备已连续运行{uptime}小时，建议安排维护")
+
+        if not issues:
+            issues.append("设备运行正常")
+            recommendations.append("按计划进行日常维护")
+
+        return AnalysisResponse(
+            type="device_diagnosis",
+            result={"device_id": device_id, "status": status, "issues": issues, "metrics": metrics},
+            confidence=0.88,
+            recommendations=recommendations,
+            severity=severity,
+        )
+
+    # ------------------------------------------------------------------
+    # Trend analysis
+    # ------------------------------------------------------------------
+
+    async def analyze_trend(
+        self, metric: str, period: str = "7d", data_points: Optional[List[float]] = None
+    ) -> TrendResult:
+        """Analyze trend for a given metric."""
+        data_points = data_points or []
+
+        if len(data_points) >= 2:
+            first_half = sum(data_points[: len(data_points) // 2]) / max(len(data_points) // 2, 1)
+            second_half = sum(data_points[len(data_points) // 2 :]) / max(len(data_points) - len(data_points) // 2, 1)
+            if first_half > 0:
+                change = ((second_half - first_half) / first_half) * 100
+            else:
+                change = 0.0
+            direction = "up" if change > 5 else ("down" if change < -5 else "stable")
+        else:
+            change = 0.0
+            direction = "stable"
+
+        forecast_map = {
+            "up": f"{metric}呈上升趋势，预计未来{period}内将继续增长",
+            "down": f"{metric}呈下降趋势，预计未来{period}内将继续降低",
+            "stable": f"{metric}保持稳定，预计未来{period}内无显著变化",
+        }
+
+        rec_map = {
+            "up": [f"关注{metric}上升原因", "设置阈值告警", "制定应对预案"],
+            "down": [f"确认{metric}下降是否正常", "检查相关设备状态"],
+            "stable": [f"继续监控{metric}", "保持当前运维策略"],
+        }
+
+        return TrendResult(
+            metric=metric,
+            trend_direction=direction,
+            change_percentage=round(change, 2),
+            forecast=forecast_map.get(direction, ""),
+            recommendations=rec_map.get(direction, []),
+        )
 
     async def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         """

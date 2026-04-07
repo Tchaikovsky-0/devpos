@@ -34,7 +34,7 @@ export const tasksApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({
+              ...result.data.items.map(({ id }) => ({
                 type: 'Task' as const,
                 id,
               })),

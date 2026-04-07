@@ -25,10 +25,10 @@ export interface TextAreaProps
 }
 
 const variantStyles: Record<InputVariant, string> = {
-  default: 'field-control bg-bg-surface/80',
-  filled: 'border border-transparent bg-bg-light hover:bg-bg-hover',
-  outline: 'border border-border bg-transparent hover:border-border-emphasis',
-  glass: 'border border-border bg-bg-base/80 backdrop-blur-xl',
+  default: 'bg-bg-primary border border-border',
+  filled: 'border border-transparent bg-bg-secondary hover:bg-bg-tertiary',
+  outline: 'border border-border bg-transparent hover:border-border-strong',
+  glass: 'border border-border bg-bg-primary/80 backdrop-blur-xl',
 };
 
 const sizeStyles: Record<InputSize, string> = {
@@ -37,15 +37,18 @@ const sizeStyles: Record<InputSize, string> = {
   lg: 'h-12 px-5 text-base',
 };
 
-const labelClassName = 'text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary';
+const labelClassName = 'text-[11px] font-semibold uppercase tracking-[0.2em] text-text-tertiary';
 
 const helperClassName = 'text-xs leading-5 text-text-tertiary';
 
 const errorClassName =
-  'border-error text-error focus:border-error focus:shadow-[0_0_0_1px_rgb(var(--error)/0.7),0_0_0_4px_rgb(var(--error)/0.12)]';
+  'border-error focus:border-error focus:shadow-[0_0_0_3px_rgba(239,68,68,0.1)]';
+
+const successClassName =
+  'border-success focus:border-success';
 
 const controlClassName =
-  'w-full rounded-[18px] text-text-primary outline-none transition-all duration-normal placeholder:text-text-tertiary disabled:opacity-60';
+  'w-full rounded-md text-text-primary outline-none transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] placeholder:text-text-tertiary disabled:opacity-50 disabled:cursor-not-allowed hover:border-border-strong focus:border-accent focus:shadow-[0_0_0_3px_rgba(59,130,246,0.1)]';
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
@@ -92,6 +95,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               prefix && 'pl-11',
               suffix && 'pr-11',
               hasError && errorClassName,
+              !hasError && props['aria-describedby']?.includes('success') && successClassName,
             )}
             {...props}
           />

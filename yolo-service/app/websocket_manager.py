@@ -193,7 +193,7 @@ class StreamProcessor:
                     self.manager.stream_statuses[stream_id].fps = fps
 
                 # Run detection
-                detections = detector.detect(frame)
+                detections, _ = detector.detect(frame)
 
                 # Broadcast results
                 if detections:

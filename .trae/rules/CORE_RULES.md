@@ -201,6 +201,7 @@
 |---------|--------|------|
 | `anti_hallucination_rules.md` | ⭐⭐⭐ | 幻觉防范完整版 |
 | `context_length_management_rules.md` | ⭐⭐⭐ | 上下文管理完整版 |
+| `skill_mcp_priority_rules.md` | ⭐⭐⭐ | **Skill/MCP 优先使用规则（新增）** |
 | `performance_optimization_rules.md` | ⭐⭐ | 性能+清洁代码 |
 | `testing_refactoring_rules.md` | ⭐⭐ | 测试+重构 |
 | `debugging_rules.md` | ⭐⭐ | 系统化调试 |

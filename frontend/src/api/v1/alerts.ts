@@ -60,6 +60,10 @@ export const alertAPI = {
     return apiClient.put<{ code: number; data: Alert }>(`/alerts/${id}`, data);
   },
 
+  delete: (id: string) => {
+    return apiClient.delete<{ code: number; message: string }>(`/alerts/${id}`);
+  },
+
   statistics: () => {
     return apiClient.get<{ code: number; data: AlertStatistics }>('/alerts/statistics');
   },

@@ -3,144 +3,265 @@
 // =============================================================================
 
 import { baseApi } from './baseApi';
+import type {
+  MediaItem,
+  StorageInfo,
+  MediaListParams,
+  MediaListResponse,
+} from '@/types/api';
+import type { FolderItem } from '@/types/api/media';
+import type { DefectFamily, DefectType } from '@/types/api/defectCase';
+
+// Re-export for convenience
+export type { DefectFamily, DefectType };
 
 // =============================================================================
-// Types
+// Defect Analysis Types
 // =============================================================================
 
-export interface MediaItem {
-  id: number;
-  time: string;
-  date: string;
-  alt: number;
-  lat: number;
-  lng: number;
-  tag: string;
-  starred: boolean;
-  image: string;
-  imageFull: string;
+export interface DefectRegion {
+  id: string;
+  bbox: [number, number, number, number];
+  defectType: DefectType;
+  family: DefectFamily;
+  severity: 'low' | 'medium' | 'high';
+  confidence: number;
+  confirmed: boolean;
 }
 
-export interface MediaListParams {
-  page?: number;
-  page_size?: number;
+export interface DefectAnalysisResult {
+  media_id: number;
+  media_url: string;
+  width: number;
+  height: number;
+  defects: DefectRegion[];
 }
 
-export interface MediaListResponse {
-  data: MediaItem[];
-  total: number;
-  page: number;
-  page_size: number;
-}
+export type DefectAnalysisResponse = DefectAnalysisResult[];
 
-export interface MediaStatistics {
-  total: number;
-  starred: number;
-  trash: number;
-  tags: string[];
-}
+// Re-export types for backward compatibility
+export type { MediaItem, FolderItem, StorageInfo };
 
-// =============================================================================
-// Mock data (until backend media API is ready)
-// =============================================================================
-
-const DRONE_SQUARE_THUMB_QS = 'w=560&h=560&fit=crop&auto=format&q=80';
-const DRONE_FULL_QS = 'w=1920&h=1280&fit=crop&auto=format&q=82';
-
-const droneImageIds = [
-  'photo-1507619579562-f2e10da1ec86',
-  'photo-1497435334941-8c899ee9e8e9',
-  'photo-1530044426743-4b7125613d93',
-  'photo-1506624183912-c602f4a21ca7',
-  'photo-1564450361329-c045112726b2',
-  'photo-1633792892356-cc6ba577dd9e',
-  'photo-1715199399795-73deba5bee63',
-  'photo-1678872590530-181ff9b5db92',
-  'photo-1640108641535-d8ed7f1071f1',
-  'photo-1719176006159-a86dd4c84696',
-  'photo-1713342902715-6248e4409a8f',
-  'photo-1652044812681-cbddd059fdc1',
-] as const;
-
-const droneSquareThumb = (id: string): string =>
-  `https://images.unsplash.com/${id}?${DRONE_SQUARE_THUMB_QS}`;
-
-const droneFull = (id: string): string =>
-  `https://images.unsplash.com/${id}?${DRONE_FULL_QS}`;
-
-function generateMockPhotos(page: number, pageSize: number, offset: number): MediaItem[] {
-  return Array.from({ length: pageSize }, (_, index) => {
-    const imageId = droneImageIds[(offset + index) % droneImageIds.length];
-    return {
-      id: offset + index + 1,
-      time: `14:${(30 + (offset + index) * 2).toString().padStart(2, '0')}:${((10 + (offset + index) * 5) % 60).toString().padStart(2, '0')}`,
-      date: '2026-03-23',
-      alt: 60 + Math.round(Math.random() * 100),
-      lat: 31.2397 + (Math.random() - 0.5) * 0.01,
-      lng: 121.4998 + (Math.random() - 0.5) * 0.01,
-      tag: ['巡检', '监测', '测绘', '搜救'][(offset + index) % 4],
-      starred: false,
-      image: droneSquareThumb(imageId),
-      imageFull: droneFull(imageId),
-    };
-  });
-}
-
-// =============================================================================
+// ============================================================================
 // API Slice
-// =============================================================================
+// ============================================================================
 
 export const mediaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    /**
-     * 获取媒体文件列表（分页）
-     * TODO: 当后端 media API 就绪后，替换 queryFn 为 query
-     */
+    /** 获取媒体文件列表（分页） */
     listMedia: builder.query<MediaListResponse, MediaListParams | undefined>({
-      queryFn: (params) => {
-        const page = params?.page ?? 1;
-        const pageSize = params?.page_size ?? 12;
-        const offset = (page - 1) * pageSize;
-
-        // Simulate a total of 96 photos across 8 pages
-        const total = 96;
-        const remaining = total - offset;
-        const count = Math.min(pageSize, remaining);
-
-        if (count <= 0) {
-          return { data: { data: [], total, page, page_size: pageSize } };
-        }
-
-        const data = generateMockPhotos(page, count, offset);
-        return { data: { data, total, page, page_size: pageSize } };
-      },
+      query: (params) => ({
+        url: '/media',
+        params: {
+          page: params?.page ?? 1,
+          page_size: params?.page_size ?? 20,
+          ...(params?.type && { type: params.type }),
+          ...(params?.folder_id !== undefined && { folder_id: params.folder_id }),
+          ...(params?.search && { search: params.search }),
+          ...(params?.starred !== undefined && { starred: String(params.starred) }),
+        },
+      }),
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({ type: 'Media' as const, id })),
+              ...result.data.items.map(({ id }: MediaItem) => ({ type: 'Media' as const, id })),
               { type: 'Media' as const, id: 'LIST' },
             ]
           : [{ type: 'Media' as const, id: 'LIST' }],
     }),
 
-    /**
-     * 获取媒体统计信息
-     * TODO: 当后端 media API 就绪后，替换 queryFn 为 query
-     */
-    getMediaStatistics: builder.query<MediaStatistics, void>({
-      queryFn: () => {
+    /** 获取回收站媒体列表 */
+    listTrashMedia: builder.query<MediaListResponse, MediaListParams | undefined>({
+      query: (params) => ({
+        url: '/media/trash',
+        params: {
+          page: params?.page ?? 1,
+          page_size: params?.page_size ?? 20,
+        },
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.items.map(({ id }: MediaItem) => ({ type: 'Media' as const, id })),
+              { type: 'Media' as const, id: 'TRASH' },
+            ]
+          : [{ type: 'Media' as const, id: 'TRASH' }],
+    }),
+
+    /** 获取单个媒体文件 */
+    getMedia: builder.query<{ code: number; data: MediaItem }, number>({
+      query: (id) => `/media/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Media', id }],
+    }),
+
+    /** 上传媒体文件 */
+    uploadMedia: builder.mutation<{ code: number; data: unknown }, FormData>({
+      query: (formData) => ({
+        url: '/media/upload',
+        method: 'POST',
+        body: formData,
+        formData: true,
+      }),
+      invalidatesTags: ['Media', 'MediaStatistics'],
+    }),
+
+    /** 更新媒体文件信息 */
+    updateMedia: builder.mutation<{ code: number; data: MediaItem }, { id: number; body: { description?: string; folder_id?: number | null } }>({
+      query: ({ id, body }) => ({
+        url: `/media/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { id }) => [{ type: 'Media', id }, { type: 'Media', id: 'LIST' }],
+    }),
+
+    /** 删除媒体文件 */
+    deleteMedia: builder.mutation<{ code: number; message: string }, number>({
+      query: (id) => ({
+        url: `/media/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Media', 'MediaStatistics'],
+    }),
+
+    /** 下载媒体文件 */
+    downloadMedia: builder.query<Blob, number>({
+      query: (id) => ({
+        url: `/media/${id}/download`,
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+
+    /** 获取文件夹列表 */
+    listMediaFolders: builder.query<{ code: number; data: FolderItem[] }, { parent_id?: number | null; all?: boolean } | undefined>({
+      query: (params) => {
+        const queryParams: Record<string, string | number | boolean> = {};
+        if (params?.parent_id !== undefined && params?.parent_id !== null) {
+          queryParams.parent_id = params.parent_id;
+        }
+        if (params?.all) {
+          queryParams.all = true;
+        }
         return {
-          data: {
-            total: 96,
-            starred: 0,
-            trash: 0,
-            tags: ['巡检', '监测', '测绘', '搜救'],
-          },
+          url: '/media/folders',
+          params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
         };
       },
+      providesTags: [{ type: 'Media' as const, id: 'FOLDERS' }],
+    }),
+
+    /** 创建文件夹 */
+    createMediaFolder: builder.mutation<{ code: number; data: FolderItem }, { name: string; parent_id?: number | null }>({
+      query: (body) => ({
+        url: '/media/folders',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Media', id: 'FOLDERS' }],
+    }),
+
+    /** 更新文件夹 */
+    updateMediaFolder: builder.mutation<{ code: number; data: FolderItem }, { id: number; body: { name?: string } }>({
+      query: ({ id, body }) => ({
+        url: `/media/folders/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Media', id: 'FOLDERS' }],
+    }),
+
+    /** 删除文件夹 */
+    deleteMediaFolder: builder.mutation<{ code: number; message: string }, number>({
+      query: (id) => ({
+        url: `/media/folders/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Media', id: 'FOLDERS' }, { type: 'Media', id: 'LIST' }],
+    }),
+
+    /** 获取存储信息 */
+    getStorageInfo: builder.query<{ code: number; data: StorageInfo }, void>({
+      query: () => '/media/storage-info',
       providesTags: ['MediaStatistics'],
+    }),
+
+    // =========================================================================
+    // Gallery 页面端点
+    // =========================================================================
+
+    /** 切换收藏状态 */
+    toggleStar: builder.mutation<MediaItem, number>({
+      query: (id) => ({ url: `/media/${id}/star`, method: 'PUT' }),
+      invalidatesTags: (_result, _error, id) => [{ type: 'Media', id }, { type: 'Media', id: 'LIST' }],
+    }),
+
+    /** 移入回收站 */
+    moveToTrash: builder.mutation<{ code: number; message: string }, number>({
+      query: (id) => ({ url: `/media/${id}/trash`, method: 'PUT' }),
+      invalidatesTags: ['Media'],
+    }),
+
+    /** 从回收站恢复 */
+    restoreFromTrash: builder.mutation<{ code: number; message: string }, { ids: number[] }>({
+      query: (body) => ({ url: '/media/trash/restore', method: 'PUT', body }),
+      invalidatesTags: ['Media'],
+    }),
+
+    /** 永久删除 */
+    permanentDeleteTrash: builder.mutation<{ code: number; message: string }, { ids: number[] }>({
+      query: (body) => ({ url: '/media/trash', method: 'DELETE', body }),
+      invalidatesTags: ['Media', 'MediaStatistics'],
+    }),
+
+    /** 批量移动到文件夹 */
+    batchMove: builder.mutation<{ code: number; message: string }, { ids: number[]; folder_id: number | null }>({
+      query: (body) => ({ url: '/media/batch/move', method: 'PUT', body }),
+      invalidatesTags: ['Media'],
+    }),
+
+    /** 批量删除 */
+    batchDelete: builder.mutation<{ code: number; message: string }, { ids: number[] }>({
+      query: (body) => ({ url: '/media/batch', method: 'DELETE', body }),
+      invalidatesTags: ['Media', 'MediaStatistics'],
+    }),
+
+    /** AI 媒体分析 */
+    analyzeMedia: builder.mutation<{ code: number; data: unknown }, { media_ids: number[]; analysis_type?: string }>({
+      query: (body) => ({ url: '/media/analyze', method: 'POST', body }),
+    }),
+
+    /** AI 缺陷分析 - 返回带检测框的缺陷区域 */
+    defectAnalyzeMedia: builder.mutation<DefectAnalysisResponse, { media_ids: number[] }>({
+      query: (body) => ({ url: '/media/defect-analyze', method: 'POST', body }),
+    }),
+
+    /** 生成巡检报告 */
+    generateReport: builder.mutation<{ code: number; data: unknown }, { media_ids: number[]; report_type?: string }>({
+      query: (body) => ({ url: '/media/report', method: 'POST', body }),
     }),
   }),
 });
 
-export const { useListMediaQuery, useGetMediaStatisticsQuery } = mediaApi;
+export const {
+  useListMediaQuery,
+  useListTrashMediaQuery,
+  useGetMediaQuery,
+  useUploadMediaMutation,
+  useUpdateMediaMutation,
+  useDeleteMediaMutation,
+  useLazyDownloadMediaQuery,
+  useListMediaFoldersQuery,
+  useCreateMediaFolderMutation,
+  useUpdateMediaFolderMutation,
+  useDeleteMediaFolderMutation,
+  useGetStorageInfoQuery,
+  useToggleStarMutation,
+  useMoveToTrashMutation,
+  useRestoreFromTrashMutation,
+  usePermanentDeleteTrashMutation,
+  useBatchMoveMutation,
+  useBatchDeleteMutation,
+  useAnalyzeMediaMutation,
+  useDefectAnalyzeMediaMutation,
+  useGenerateReportMutation,
+} = mediaApi;

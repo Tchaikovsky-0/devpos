@@ -33,9 +33,9 @@ export const sensorsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({
+              ...result.data.items.map(({ id }: { id: number }) => ({
                 type: 'Sensor' as const,
-                id,
+                id: String(id),
               })),
               { type: 'Sensor' as const, id: 'LIST' },
             ]

@@ -13,16 +13,32 @@ export type DefectFamily = 'security' | 'env' | 'structure' | 'equipment';
 
 /** 缺陷类型（二级） */
 export type DefectType =
-  | 'intrusion'    // 入侵
-  | 'fire'         // 火情
-  | 'algae'        // 蓝藻
-  | 'crack'        // 裂缝
-  | 'wall_damage'  // 墙损
-  | 'stair_damage' // 楼梯损伤
-  | 'vehicle'      // 车辆异常
-  | 'personnel'    // 人员异常
-  | 'leak'         // 泄漏
-  | 'other';       // 其他
+  // 安全类 (security)
+  | 'intrusion'              // 入侵（人员闯入）
+  | 'fire'                   // 火情（火焰/烟雾）
+  // 环境类 (env)
+  | 'algae'                  // 蓝藻/水面污染
+  | 'water_pollution'        // 水体污染（油污/废水）
+  | 'waste_accumulation'     // 固废堆积
+  | 'gas_leak'               // 气体泄漏
+  | 'smoke'                  // 烟雾
+  // 结构类 (structure)
+  | 'crack'                  // 裂缝
+  | 'wall_damage'            // 墙损
+  | 'stair_damage'           // 楼梯损伤
+  | 'corrosion'              // 金属腐蚀
+  | 'deformation'             // 结构变形
+  | 'seepage'                // 渗水
+  // 设备类 (equipment)
+  | 'vehicle'                // 车辆异常
+  | 'personnel'              // 人员异常
+  | 'meter_abnormal'         // 仪表读数异常
+  | 'vibration_abnormal'     // 振动异常
+  | 'temperature_exceed'     // 温度超标
+  | 'seal_damage'            // 密封损坏
+  // 其他
+  | 'leak'                   // 泄漏
+  | 'other';                 // 其他
 
 /** 缺陷案例状态 */
 export type DefectCaseStatus = 'draft' | 'confirmed' | 'processing' | 'resolved' | 'closed';
@@ -45,14 +61,30 @@ export const DEFECT_FAMILY_LABELS: Record<DefectFamily, string> = {
 };
 
 export const DEFECT_TYPE_LABELS: Record<DefectType, string> = {
+  // 安全类
   intrusion: '入侵',
   fire: '火情',
+  // 环境类
   algae: '蓝藻',
+  water_pollution: '水体污染',
+  waste_accumulation: '固废堆积',
+  gas_leak: '气体泄漏',
+  smoke: '烟雾',
+  // 结构类
   crack: '裂缝',
   wall_damage: '墙损',
   stair_damage: '楼梯损伤',
+  corrosion: '金属腐蚀',
+  deformation: '结构变形',
+  seepage: '渗水',
+  // 设备类
   vehicle: '车辆异常',
   personnel: '人员异常',
+  meter_abnormal: '仪表异常',
+  vibration_abnormal: '振动异常',
+  temperature_exceed: '温度超标',
+  seal_damage: '密封损坏',
+  // 其他
   leak: '泄漏',
   other: '其他',
 };

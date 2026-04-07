@@ -7,3 +7,5 @@ export * from './alerts';
 export * from './streams';
 export * from './auth';
 export * from './defectCase';
+export * from './media';
+export * from './tasks';

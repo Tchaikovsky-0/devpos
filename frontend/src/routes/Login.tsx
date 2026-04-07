@@ -14,9 +14,10 @@ import {
   useLoginMutation,
   useRegisterMutation,
 } from '@/store/api/authApi';
-import { setCredentials } from '../store/authSlice';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { setCredentials } from '@/store/authSlice';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { LogoWithText } from '@/components/Logo';
 
 export const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -87,17 +88,7 @@ export const Login = () => {
 
       <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
         <div className="flex flex-col justify-between px-6 py-8 md:px-12 lg:px-16">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-lg font-semibold text-white shadow-panel">
-              巡
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">巡检宝</p>
-              <p className="text-xs tracking-[0.18em] text-text-tertiary">
-                智能巡检工作台
-              </p>
-            </div>
-          </div>
+          <LogoWithText size="lg" showSubtitle />
 
           <div className="max-w-2xl py-10">
             <p className="text-[11px] font-semibold tracking-[0.22em] text-text-tertiary">

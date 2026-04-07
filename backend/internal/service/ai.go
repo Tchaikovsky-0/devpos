@@ -1,12 +1,15 @@
 package service
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -15,9 +18,10 @@ import (
 )
 
 type AIService struct {
-	db     *gorm.DB
-	cfg    *config.Config
-	client *http.Client
+	db       *gorm.DB
+	cfg      *config.Config
+	client   *http.Client
+	openclaw *OpenClawService
 }
 
 func NewAIService(db *gorm.DB, cfg *config.Config) *AIService {
@@ -27,6 +31,7 @@ func NewAIService(db *gorm.DB, cfg *config.Config) *AIService {
 		client: &http.Client{
 			Timeout: 60 * time.Second,
 		},
+		openclaw: NewOpenClawService(db, cfg),
 	}
 }
 
@@ -253,4 +258,175 @@ func (s *AIService) DiagnoseDevice(deviceID string) (map[string]interface{}, err
 // PredictStorage predicts storage usage
 func (s *AIService) PredictStorage(streamID string) (map[string]interface{}, error) {
 	return s.doJSON("GET", fmt.Sprintf("/api/v1/predict/storage/%s", streamID), nil)
+}
+
+// ---------------------------------------------------------------------------
+// Chat with session + OpenClaw fallback
+// ---------------------------------------------------------------------------
+
+// ChatRequest represents an enhanced chat request with session support
+type ChatRequest struct {
+	Message   string                 `json:"message"`
+	SessionID string                 `json:"session_id,omitempty"`
+	Context   map[string]interface{} `json:"context,omitempty"`
+}
+
+// ChatWithSession sends a chat message through OpenClaw -> Python AI fallback chain.
+func (s *AIService) ChatWithSession(ctx context.Context, req ChatRequest) (map[string]interface{}, error) {
+	// Build the payload for the Python AI service
+	payload := map[string]interface{}{
+		"messages": []map[string]string{
+			{"role": "user", "content": req.Message},
+		},
+	}
+	if req.SessionID != "" {
+		payload["session_id"] = req.SessionID
+	}
+	if req.Context != nil {
+		payload["context"] = req.Context
+	}
+
+	// Try OpenClaw first, then Python AI
+	if s.openclaw.CheckHealth() {
+		result, err := s.openclaw.Chat(ctx, req.Message, req.Context)
+		if err == nil {
+			return map[string]interface{}{
+				"message":    result,
+				"session_id": req.SessionID,
+				"source":     "openclaw",
+			}, nil
+		}
+	}
+
+	// Fallback to Python AI
+	resp, err := s.doJSON("POST", "/api/v1/chat", payload)
+	if err != nil {
+		return map[string]interface{}{
+			"message":    "AI 服务暂不可用，请稍后再试。",
+			"session_id": req.SessionID,
+			"source":     "fallback",
+		}, nil
+	}
+
+	// Extract content from Python AI response
+	message := ""
+	sessionID := req.SessionID
+	var suggestions []string
+
+	if msg, ok := resp["message"].(map[string]interface{}); ok {
+		if content, ok := msg["content"].(string); ok {
+			message = content
+		}
+	}
+	if sid, ok := resp["session_id"].(string); ok && sid != "" {
+		sessionID = sid
+	}
+	if sugs, ok := resp["suggestions"].([]interface{}); ok {
+		for _, s := range sugs {
+			if str, ok := s.(string); ok {
+				suggestions = append(suggestions, str)
+			}
+		}
+	}
+
+	return map[string]interface{}{
+		"message":     message,
+		"session_id":  sessionID,
+		"suggestions": suggestions,
+		"source":      "python-ai",
+	}, nil
+}
+
+// ChatStreamSSE proxies the SSE stream from the Python AI service to the client.
+func (s *AIService) ChatStreamSSE(ctx context.Context, req ChatRequest, writer io.Writer, flusher http.Flusher) error {
+	payload := map[string]interface{}{
+		"messages": []map[string]string{
+			{"role": "user", "content": req.Message},
+		},
+	}
+	if req.SessionID != "" {
+		payload["session_id"] = req.SessionID
+	}
+	if req.Context != nil {
+		payload["context"] = req.Context
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", s.aiBaseURL()+"/api/v1/chat/stream", bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "text/event-stream")
+
+	resp, err := s.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "data:") || strings.HasPrefix(line, "event:") || line == "" {
+			fmt.Fprintf(writer, "%s\n", line)
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+	}
+
+	return scanner.Err()
+}
+
+// ---------------------------------------------------------------------------
+// Session management (proxy to Python AI service)
+// ---------------------------------------------------------------------------
+
+// GetSessions fetches all chat sessions from the Python AI service.
+func (s *AIService) GetSessions() ([]map[string]interface{}, error) {
+	resp, err := s.doJSON("GET", "/api/v1/sessions", nil)
+	if err != nil {
+		return []map[string]interface{}{}, nil
+	}
+	if sessions, ok := resp["sessions"].([]interface{}); ok {
+		result := make([]map[string]interface{}, 0, len(sessions))
+		for _, sess := range sessions {
+			if m, ok := sess.(map[string]interface{}); ok {
+				result = append(result, m)
+			}
+		}
+		return result, nil
+	}
+	return []map[string]interface{}{}, nil
+}
+
+// GetSession fetches a single chat session by ID.
+func (s *AIService) GetSession(sessionID string) (map[string]interface{}, error) {
+	resp, err := s.doJSON("GET", fmt.Sprintf("/api/v1/sessions/%s", sessionID), nil)
+	if err != nil {
+		return nil, fmt.Errorf("session not found")
+	}
+	return resp, nil
+}
+
+// DeleteSession deletes a chat session by ID.
+func (s *AIService) DeleteSession(sessionID string) error {
+	req, err := http.NewRequest("DELETE", s.aiBaseURL()+fmt.Sprintf("/api/v1/sessions/%s", sessionID), nil)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("session not found")
+	}
+	return nil
 }

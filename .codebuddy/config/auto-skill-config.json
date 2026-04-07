@@ -1,0 +1,261 @@
+{
+  "version": "1.0.0",
+  "name": "Auto Skill Invocation Configuration",
+  "description": "自动技能调用配置 - 根据用户意图自动匹配并调用专业技能",
+  "enabled": true,
+  "matching_strategy": "keyword_and_intent",
+  "skills": [
+    {
+      "skill_id": "canvas-design",
+      "skill_name": "视觉设计",
+      "triggers": {
+        "keywords": [
+          "logo", "设计", "海报", "banner", "图标", "插图", "视觉",
+          "design", "logo", "poster", "icon", "illustration", "visual",
+          "配色", "字体", "排版", "美观", "好看", "专业设计",
+          "brand identity", "vi设计", "品牌标识"
+        ],
+        "intent_patterns": [
+          ".*设计.*(logo|图标|海报|banner).*",
+          ".*(创建|制作|生成).*(图|设计|视觉).*",
+          ".*(品牌|公司).*(标识|形象|视觉).*"
+        ],
+        "priority": 10,
+        "auto_invoke": true
+      },
+      "description": "创建海报、Logo、视觉艺术等静态设计作品"
+    },
+    {
+      "skill_id": "brand",
+      "skill_name": "品牌策略",
+      "triggers": {
+        "keywords": [
+          "品牌", "brand", "定位", "战略", "品牌价值", "品牌故事",
+          "品牌战略", "品牌定位", "品牌视觉", "品牌指南", "品牌一致性",
+          "市场定位", "竞争分析", "品牌保护"
+        ],
+        "intent_patterns": [
+          ".*品牌.*(策略|战略|定位|价值|故事).*",
+          ".*(创建|建立|开发).*(品牌|brand).*",
+          ".*(品牌|企业形象).*(系统|指南|规范).*"
+        ],
+        "priority": 10,
+        "auto_invoke": true
+      },
+      "description": "品牌策略、身份开发、一致性维护"
+    },
+    {
+      "skill_id": "data-analysis-workflows",
+      "skill_name": "数据分析工作流",
+      "triggers": {
+        "keywords": [
+          "数据分析", "可视化", "报表", "图表", "统计", "dashboard",
+          "data analysis", "visualization", "chart", "report", "statistics",
+          "sql", "查询", "趋势", "洞察", "数据大屏"
+        ],
+        "intent_patterns": [
+          ".*(分析|统计).*(数据|报表|图表).*",
+          ".*(生成|创建).*(图表|报表|dashboard).*",
+          ".*(sql|查询).*(数据|分析).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "完整的数据分析工作流，包含6个标准流程"
+    },
+    {
+      "skill_id": "excel",
+      "skill_name": "Excel 文件处理",
+      "triggers": {
+        "keywords": [
+          "excel", "表格", "xlsx", "csv", "电子表格",
+          "spreadsheet", "数据处理", "透视表", "公式"
+        ],
+        "intent_patterns": [
+          ".*(处理|编辑|创建).*(excel|表格|xlsx).*",
+          ".*(数据|报表).*(excel|表格).*",
+          ".*csv.*(处理|转换|分析).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "Excel 文件的打开、创建、编辑、分析"
+    },
+    {
+      "skill_id": "pdf",
+      "skill_name": "PDF 文档生成",
+      "triggers": {
+        "keywords": [
+          "pdf", "报告", "导出", "文档生成", "简历", "提案",
+          "pdf生成", "专业文档", "打印文档", "client-ready"
+        ],
+        "intent_patterns": [
+          ".*(生成|创建|导出).*(pdf|报告|文档).*",
+          ".*(制作|写).*(简历|提案|合同).*",
+          ".*pdf.*(文档|报告|设计).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "专业级 PDF 文档生成，包含设计系统"
+    },
+    {
+      "skill_id": "word",
+      "skill_name": "Word 文档生成",
+      "triggers": {
+        "keywords": [
+          "word", "docx", "文档", "报告", "合同", "公文",
+          "word文档", "文档创建", "格式化文档"
+        ],
+        "intent_patterns": [
+          ".*(创建|编辑|生成).*(word|docx|文档).*",
+          ".*(写|制作).*(报告|合同|文档).*",
+          ".*docx.*(处理|生成|编辑).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "专业 DOCX 文档创建和编辑"
+    },
+    {
+      "skill_id": "ppt",
+      "skill_name": "PPT 演示文稿",
+      "triggers": {
+        "keywords": [
+          "ppt", "powerpoint", "演示文稿", "幻灯片", "汇报",
+          "路演", "presentation", "deck", "slides"
+        ],
+        "intent_patterns": [
+          ".*(创建|制作|生成).*(ppt|演示文稿|幻灯片).*",
+          ".*(做|写).*(汇报|路演|presentation).*",
+          ".*pptx.*(编辑|生成|创建).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "PowerPoint 演示文稿生成和编辑"
+    },
+    {
+      "skill_id": "impeccable",
+      "skill_name": "UI/UX 设计质量工具集",
+      "triggers": {
+        "keywords": [
+          "ui", "ux", "界面优化", "用户体验", "响应式", "动效",
+          "设计审查", "质量检查", "polish", "audit", "adapt",
+          "animate", "设计质量", "界面美化"
+        ],
+        "intent_patterns": [
+          ".*(优化|改进|美化).*(ui|ux|界面|设计).*",
+          ".*(审查|检查|评估).*(设计|界面|ui).*",
+          "^/(polish|audit|adapt|animate|delight).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "20 个 UI/UX 专业命令，生产级界面"
+    },
+    {
+      "skill_id": "ai-drawing",
+      "skill_name": "AI绘图",
+      "triggers": {
+        "keywords": [
+          "ai生图", "图像生成", "图片编辑", "nano banana",
+          "gemini图像", "文生图", "图生图", "ai绘图"
+        ],
+        "intent_patterns": [
+          ".*(生成|创建|画).*(图|图片|图像).*",
+          ".*ai.*(图|图像|生成).*",
+          ".*(编辑|修改|处理).*(图片|图像).*"
+        ],
+        "priority": 9,
+        "auto_invoke": true
+      },
+      "description": "Nano Banana Pro 图像生成和编辑"
+    },
+    {
+      "skill_id": "code",
+      "skill_name": "Code 开发",
+      "triggers": {
+        "keywords": [
+          "写代码", "开发", "编程", "实现功能", "重构",
+          "coding", "development", "programming", "tdd"
+        ],
+        "intent_patterns": [
+          ".*(写|开发|实现).*(代码|功能|模块).*",
+          ".*(重构|优化|改进).*(代码|程序).*",
+          ".*(创建|搭建).*(项目|应用|系统).*"
+        ],
+        "priority": 8,
+        "auto_invoke": true
+      },
+      "description": "规划-实现-验证-测试的完整开发流程"
+    },
+    {
+      "skill_id": "docker",
+      "skill_name": "Docker",
+      "triggers": {
+        "keywords": [
+          "docker", "容器", "container", "dockerfile",
+          "docker-compose", "镜像", "部署", "devops"
+        ],
+        "intent_patterns": [
+          ".*(创建|编写|配置).*(docker|dockerfile|compose).*",
+          ".*(构建|运行|管理).*(容器|镜像|container).*",
+          ".*docker.*(部署|发布|上线).*"
+        ],
+        "priority": 8,
+        "auto_invoke": true
+      },
+      "description": "Docker 容器、镜像、Compose 专业管理"
+    },
+    {
+      "skill_id": "git",
+      "skill_name": "Git",
+      "triggers": {
+        "keywords": [
+          "git", "版本控制", "提交", "分支", "合并",
+          "commit", "branch", "merge", "rebase", "workflow"
+        ],
+        "intent_patterns": [
+          ".*(提交|推送|拉取).*(代码|commit).*",
+          ".*(创建|切换|合并).*(分支|branch).*",
+          ".*git.*(操作|管理|工作流).*"
+        ],
+        "priority": 8,
+        "auto_invoke": true
+      },
+      "description": "Git 版本控制和协作工作流"
+    },
+    {
+      "skill_id": "auto-researcher",
+      "skill_name": "Auto Researcher",
+      "triggers": {
+        "keywords": [
+          "调研", "研究", "深度分析", "市场研究",
+          "竞品分析", "技术调研", "交叉验证"
+        ],
+        "intent_patterns": [
+          ".*(调研|研究|分析).*(市场|竞品|技术).*",
+          ".*(深度|全面|详细).*(分析|研究|调研).*",
+          ".*(收集|整理).*(信息|资料|数据).*"
+        ],
+        "priority": 8,
+        "auto_invoke": false,
+        "confirm_before_invoke": true
+      },
+      "description": "自主深度调研和报告生成"
+    }
+  ],
+  "execution_config": {
+    "auto_invoke_threshold": 0.7,
+    "max_skills_per_task": 3,
+    "wait_for_skill_load": true,
+    "fallback_to_general": false,
+    "require_confirmation": false
+  },
+  "logging": {
+    "enabled": true,
+    "log_skill_invocations": true,
+    "log_decisions": true
+  }
+}

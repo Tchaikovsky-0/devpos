@@ -18,6 +18,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from sse_starlette.sse import EventSourceResponse
 
 from .models.schemas import (
     AnalysisRequest,
@@ -31,6 +32,10 @@ from .models.schemas import (
     ModelInfo,
     ReportGenerateRequest,
     ReportGenerateResponse,
+    RootCauseResult,
+    SessionDetail,
+    SessionSummary,
+    TrendResult,
 )
 from .services.analysis_service import get_analysis_service
 from .services.chat_service import get_chat_service
@@ -156,6 +161,48 @@ async def chat_completion(request: ChatRequest):
     return await service.chat(request)
 
 
+@app.post("/api/v1/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """
+    AI 对话 - 流式响应 (SSE)
+    """
+    service = get_chat_service()
+    return EventSourceResponse(service.chat_stream(request))
+
+
+# ============================================================================
+# Session Management
+# ============================================================================
+
+
+@app.get("/api/v1/sessions")
+async def list_sessions():
+    """获取所有会话"""
+    service = get_chat_service()
+    sessions = await service.get_sessions()
+    return {"sessions": [s.model_dump() for s in sessions]}
+
+
+@app.get("/api/v1/sessions/{session_id}")
+async def get_session(session_id: str):
+    """获取会话详情"""
+    service = get_chat_service()
+    session = await service.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session.model_dump()
+
+
+@app.delete("/api/v1/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """删除会话"""
+    service = get_chat_service()
+    deleted = await service.delete_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "ok", "message": "Session deleted"}
+
+
 # ============================================================================
 # AI Analysis
 # ============================================================================
@@ -182,6 +229,29 @@ async def analyze_alert(alert_id: str):
             data={"alert_id": alert_id, "level": "P2", "type": "unknown"},
         )
     )
+
+
+@app.post("/api/v1/root-cause")
+async def root_cause_analysis(
+    alert_type: str = "unknown",
+    alert_level: str = "P2",
+    description: str = "",
+):
+    """告警根因分析"""
+    service = get_analysis_service()
+    result = await service.analyze_root_cause(alert_type, alert_level, description)
+    return result.model_dump()
+
+
+@app.post("/api/v1/trend")
+async def trend_analysis(
+    metric: str = "alerts",
+    period: str = "7d",
+):
+    """趋势分析"""
+    service = get_analysis_service()
+    result = await service.analyze_trend(metric, period)
+    return result.model_dump()
 
 
 @app.post("/api/v1/diagnose-device/{device_id}", response_model=AnalysisResponse)

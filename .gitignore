@@ -1,3 +1,6 @@
+# macOS 资源叉文件
+._*
+
 # 依赖
 node_modules/
 pnpm-lock.yaml
@@ -9,10 +12,15 @@ dist/
 build/
 *.egg-info/
 
-# 环境变量
+# 环境变量（敏感文件）
 .env
 .env.local
 .env.*.local
+backend/.env
+ai-service/.env
+yolo-service/.env
+frontend/.env
+# 注意: .env.example 和 .env.development 不被忽略
 
 # IDE
 .vscode/
@@ -46,3 +54,30 @@ coverage/
 # 后端 Go
 backend/vendor/
 backend/tmp/
+
+# 日志目录
+logs/
+*.pid
+
+# 测试结果
+test-results/
+frontend/test-results/
+
+# 测试临时文件
+frontend/test-simple.html
+frontend/test.html
+
+# IDE 和工具
+.codebuddy/agents/specialists/
+.qoder/
+*.qoder/
+
+# 品牌资源（可选）
+brand/
+
+# 多Agent协调器（可选）
+multi-agent-coordinator/
+
+# 临时文档
+MULTI_AGENT_PARALLEL_DESIGN.md
+巡检宝云原生服务架构优化设计方案.md

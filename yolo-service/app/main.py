@@ -7,6 +7,7 @@ FastAPI application for YOLO-based object detection with WebSocket streaming.
 import asyncio
 import json
 import os
+from collections import deque
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
@@ -21,8 +22,11 @@ from .websocket_manager import manager, processor
 
 
 # Configuration
-YOLO_MODEL_PATH = "models/yolov8n.pt"
-DEVICE = "cpu"  # Change to "cuda" for GPU or "mps" for Apple Silicon
+YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "models/yolov8n.pt")
+DEVICE = os.getenv("YOLO_DEVICE", "cpu")
+
+# In-memory detection history (last 1000 records)
+_detection_history: deque = deque(maxlen=1000)
 
 
 @asynccontextmanager
@@ -151,19 +155,28 @@ async def detect_image(file: UploadFile = File(...)):
     contents = await file.read()
 
     try:
-        detections = detector.detect_from_bytes(contents)
+        detections, inference_time_ms, image_size = detector.detect_from_bytes(contents)
 
-        return {
+        result = {
             "timestamp": datetime.utcnow().isoformat(),
             "detections": [
                 {
                     "class": d.class_name,
-                    "confidence": d.confidence,
-                    "bbox": [d.bbox.x1, d.bbox.y1, d.bbox.x2, d.bbox.y2]
+                    "confidence": round(d.confidence, 4),
+                    "bbox": [d.bbox.x1, d.bbox.y1, d.bbox.x2, d.bbox.y2],
+                    "class_id": 0
                 }
                 for d in detections
-            ]
+            ],
+            "inference_time_ms": round(inference_time_ms, 2),
+            "model_name": detector.get_model_name(),
+            "image_size": image_size
         }
+
+        # Store in history
+        _detection_history.append(result)
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -179,18 +192,24 @@ async def detect_batch(files: list[UploadFile] = File(...)):
     for file in files:
         contents = await file.read()
         try:
-            detections = detector.detect_from_bytes(contents)
-            results.append({
+            detections, inference_time_ms, image_size = detector.detect_from_bytes(contents)
+            result_item = {
                 "filename": file.filename,
                 "detections": [
                     {
                         "class": d.class_name,
-                        "confidence": d.confidence,
-                        "bbox": [d.bbox.x1, d.bbox.y1, d.bbox.x2, d.bbox.y2]
+                        "confidence": round(d.confidence, 4),
+                        "bbox": [d.bbox.x1, d.bbox.y1, d.bbox.x2, d.bbox.y2],
+                        "class_id": 0
                     }
                     for d in detections
-                ]
-            })
+                ],
+                "inference_time_ms": round(inference_time_ms, 2),
+                "model_name": detector.get_model_name(),
+                "image_size": image_size
+            }
+            results.append(result_item)
+            _detection_history.append(result_item)
         except Exception as e:
             results.append({
                 "filename": file.filename,
@@ -198,6 +217,85 @@ async def detect_batch(files: list[UploadFile] = File(...)):
             })
 
     return {"results": results}
+
+
+# ============================================================================
+# Stream Frame Detection (HTTP)
+# ============================================================================
+
+class StreamDetectRequest(BaseModel):
+    """Request to detect from a video stream URL"""
+    stream_url: str
+    stream_id: Optional[str] = None
+    timeout: float = 5.0
+
+
+@app.post("/detect/stream")
+async def detect_from_stream(request: StreamDetectRequest):
+    """
+    Detect objects by grabbing a frame from a video stream URL.
+
+    Supports RTSP, HTTP, and other OpenCV-compatible stream URLs.
+    Grabs a single frame and runs YOLO inference on it.
+    """
+    detector = get_detector()
+    if not detector:
+        raise HTTPException(status_code=503, detail="YOLO model not loaded")
+
+    try:
+        detections, inference_time_ms, image_size = detector.detect_from_stream_url(
+            request.stream_url, timeout=request.timeout
+        )
+
+        result = {
+            "stream_url": request.stream_url,
+            "stream_id": request.stream_id or "",
+            "timestamp": datetime.utcnow().isoformat(),
+            "detections": [
+                {
+                    "class": d.class_name,
+                    "confidence": round(d.confidence, 4),
+                    "bbox": [d.bbox.x1, d.bbox.y1, d.bbox.x2, d.bbox.y2],
+                    "class_id": 0
+                }
+                for d in detections
+            ],
+            "inference_time_ms": round(inference_time_ms, 2),
+            "model_name": detector.get_model_name(),
+            "image_size": image_size
+        }
+
+        # Store in history
+        _detection_history.append(result)
+
+        return result
+
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
+
+
+# ============================================================================
+# Detection History
+# ============================================================================
+
+@app.get("/detections")
+async def get_detection_history(limit: int = 100):
+    """
+    Get recent detection history from in-memory store.
+
+    Returns up to `limit` most recent detection records.
+    """
+    limit = min(max(1, limit), 1000)
+    records = list(_detection_history)
+    # Return most recent first
+    records.reverse()
+    return {
+        "total": len(_detection_history),
+        "limit": limit,
+        "detections": records[:limit]
+    }
 
 
 # ============================================================================

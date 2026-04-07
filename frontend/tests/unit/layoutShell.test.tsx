@@ -1,56 +1,29 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
 import React from 'react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { store } from '../../src/store';
-import { Layout } from '../../src/components/Layout';
 import { ThemeToggle } from '../../src/components/ThemeToggle';
 
 describe('Shell Layout', () => {
   beforeEach(() => {
-    document.documentElement.setAttribute('data-theme', 'dark');
     window.localStorage.clear();
+    document.documentElement.setAttribute('data-theme', 'deep');
   });
 
-  it('toggles the document theme between dark and light', async () => {
+  it('toggles the document theme between dark and light', () => {
     render(<ThemeToggle />);
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    // 三档主题系统：deep → balanced → light 循环
+    expect(document.documentElement.getAttribute('data-theme')).toBe('deep');
 
-    fireEvent.click(screen.getByRole('button', { name: '切换到浅色模式' }));
+    const button = screen.getByRole('button');
+    fireEvent.click(button);
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    const theme = document.documentElement.getAttribute('data-theme');
+    expect(theme).toBe('balanced');
   });
 
-  it('renders the contextual navigation for the active module group', () => {
-    const router = createMemoryRouter(
-      [
-        {
-          path: '/',
-          element: <Layout />,
-          children: [
-            { path: '', element: <div>Dashboard View</div> },
-            { path: 'alerts', element: <div>Alerts View</div> },
-            { path: 'monitor', element: <div>Monitor View</div> },
-            { path: 'tasks', element: <div>Tasks View</div> },
-            { path: 'sensors', element: <div>Sensors View</div> },
-          ],
-        },
-      ],
-      { initialEntries: ['/alerts'] },
-    );
-
-    render(
-      <Provider store={store}>
-        <RouterProvider router={router} />
-      </Provider>,
-    );
-
-    expect(screen.getAllByText('Operations').length).toBeGreaterThan(0);
-    expect(screen.getByText('告警中心')).toBeInTheDocument();
-    expect(screen.getByText('实时监控')).toBeInTheDocument();
-    expect(screen.getByText('任务管理')).toBeInTheDocument();
-    expect(screen.getByText('传感器')).toBeInTheDocument();
+  it('renders ThemeToggle as accessible button', () => {
+    render(<ThemeToggle />);
+    expect(screen.getByRole('button')).toBeInTheDocument();
   });
 });

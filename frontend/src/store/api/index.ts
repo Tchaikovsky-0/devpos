@@ -13,3 +13,6 @@ export { tenantConfigApi } from './tenantConfigApi';
 export { authApi } from './authApi';
 export { defectCaseApi } from './defectCaseApi';
 export { mediaApi } from './mediaApi';
+export { openclawApi } from './openclawApi';
+export { useAnalyzeMediaMutation, useGenerateReportMutation } from './mediaApi';
+export { useListMissionsQuery, useGetMissionStatisticsQuery, useListTemplatesQuery } from './openclawApi';

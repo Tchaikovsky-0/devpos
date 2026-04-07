@@ -2,16 +2,24 @@ import React, { lazy, Suspense } from 'react';
 import { Navigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ToastProvider } from './components/ui/toast';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { Layout } from './components/Layout';
+import { MainLayout } from './components/layout/MainLayout';
 
-const Center = lazy(() => import('./routes/Center'));
-const Media = lazy(() => import('./routes/Media'));
-const AlertsWorkspace = lazy(() => import('./routes/AlertsWorkspace'));
-const TasksWorkspace = lazy(() => import('./routes/TasksWorkspace'));
-const AssetsWorkspace = lazy(() => import('./routes/AssetsWorkspace'));
-const OpenClawWorkspace = lazy(() => import('./routes/OpenClawWorkspace'));
-const SystemWorkspace = lazy(() => import('./routes/SystemWorkspace'));
+// 新设计系统页面
+const CommandCenter = lazy(() => import('./pages/CommandCenter'));
+const AlertInbox = lazy(() => import('./pages/AlertInbox'));
+const MediaLibrary = lazy(() => import('./pages/MediaLibrary'));
+const SystemSettings = lazy(() => import('./pages/SystemSettings'));
+
+// 保留原有页面
 const Login = lazy(() => import('./routes/Login'));
+
+// 路由元数据，供面包屑和导航使用
+export const ROUTE_META: Record<string, { title: string; icon?: string }> = {
+  '/dashboard': { title: '监控大屏' },
+  '/alerts': { title: '告警处置' },
+  '/media': { title: '媒体库' },
+  '/system': { title: '系统设置' },
+};
 
 // 页面加载组件
 const PageLoader: React.FC = () => (
@@ -35,83 +43,51 @@ const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <Layout />,
+    element: <MainLayout />,
     children: [
       {
         path: '',
-        element: <LazyComponent><Center /></LazyComponent>,
-      },
-      {
-        path: 'center',
-        element: <LazyComponent><Center /></LazyComponent>,
-      },
-      {
-        path: 'monitor',
-        element: <LazyComponent><Center /></LazyComponent>,
+        element: <Navigate to="/dashboard" replace />,
       },
       {
         path: 'dashboard',
-        element: <LazyComponent><Center /></LazyComponent>,
+        element: <LazyComponent><CommandCenter /></LazyComponent>,
       },
       {
-        path: 'media',
-        element: <LazyComponent><Media /></LazyComponent>,
+        path: 'videos',
+        element: <Navigate to="/dashboard" replace />,
       },
       {
-        path: 'media-library',
-        element: <LazyComponent><Media /></LazyComponent>,
+        path: 'center',
+        element: <Navigate to="/dashboard" replace />,
       },
       {
-        path: 'gallery',
-        element: <LazyComponent><Media /></LazyComponent>,
-      },
-      {
-        path: 'reports',
-        element: <LazyComponent><Media /></LazyComponent>,
+        path: 'monitor',
+        element: <Navigate to="/dashboard" replace />,
       },
       {
         path: 'alerts',
-        element: <LazyComponent><AlertsWorkspace /></LazyComponent>,
+        element: <LazyComponent><AlertInbox /></LazyComponent>,
       },
       {
-        path: 'tasks',
-        element: <LazyComponent><TasksWorkspace /></LazyComponent>,
+        path: 'media',
+        element: <LazyComponent><MediaLibrary /></LazyComponent>,
       },
       {
-        path: 'assets',
-        element: <LazyComponent><AssetsWorkspace /></LazyComponent>,
-      },
-      {
-        path: 'sensors',
-        element: <LazyComponent><AssetsWorkspace /></LazyComponent>,
-      },
-      {
-        path: 'openclaw',
-        element: <LazyComponent><OpenClawWorkspace /></LazyComponent>,
-      },
-      {
-        path: 'ai',
-        element: <LazyComponent><OpenClawWorkspace /></LazyComponent>,
-      },
-      {
-        path: 'command',
-        element: <LazyComponent><OpenClawWorkspace /></LazyComponent>,
+        path: 'media-library',
+        element: <Navigate to="/media" replace />,
       },
       {
         path: 'system',
-        element: <LazyComponent><SystemWorkspace /></LazyComponent>,
+        element: <LazyComponent><SystemSettings /></LazyComponent>,
       },
       {
         path: 'settings',
-        element: <LazyComponent><SystemWorkspace /></LazyComponent>,
-      },
-      {
-        path: 'admin',
-        element: <LazyComponent><SystemWorkspace /></LazyComponent>,
+        element: <Navigate to="/system" replace />,
       },
       {
         path: '*',
-        element: <Navigate to="/center" replace />,
+        element: <Navigate to="/dashboard" replace />,
       },
     ],
   },

@@ -89,5 +89,32 @@ func (h *AuthHandler) GetUserInfo(c *gin.Context) {
 	response.Success(c, user)
 }
 
-// HashPassword is defined in utils.go
-// Kept for backward compatibility; new code should use service.AuthService
+type ResetPasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=8"`
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	userID := c.GetUint("user_id")
+	if err := h.authService.ResetPassword(userID, req.OldPassword, req.NewPassword); err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			response.BadRequest(c, "old password is incorrect")
+			return
+		}
+		if errors.Is(err, service.ErrNotFound) {
+			response.NotFound(c, "user not found")
+			return
+		}
+		// 密码强度校验失败返回具体错误信息
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{"message": "password updated successfully"})
+}

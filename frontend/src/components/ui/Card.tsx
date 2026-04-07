@@ -2,7 +2,7 @@ import React, { forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-type CardVariant = 'default' | 'glass' | 'accent' | 'interactive';
+type CardVariant = 'default' | 'interactive' | 'accent' | 'elevated';
 type CardPadding = 'none' | 'sm' | 'md' | 'lg' | 'xl';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -13,18 +13,18 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles: Record<CardVariant, string> = {
-  default: 'surface-panel',
-  glass: 'border border-border bg-bg-base/78 backdrop-blur-xl',
-  accent: 'surface-panel border-accent/25 bg-accent/5',
-  interactive: 'surface-panel cursor-pointer hover:border-border-emphasis hover:bg-bg-tertiary',
+  default: 'bg-bg-secondary border border-border-subtle shadow-md',
+  interactive: 'bg-bg-secondary border border-border-subtle shadow-md cursor-pointer hover:border-border hover:shadow-lg hover:translate-y-[-2px] active:translate-y-0 active:scale-[0.98]',
+  accent: 'bg-bg-secondary border border-border-subtle shadow-md border-t-3 border-t-accent',
+  elevated: 'bg-bg-elevated border border-border-subtle shadow-lg',
 };
 
 const paddingStyles: Record<CardPadding, string> = {
   none: '',
   sm: 'p-3',
-  md: 'p-4',
-  lg: 'p-5',
-  xl: 'p-6',
+  md: 'p-5',
+  lg: 'p-6',
+  xl: 'p-7',
 };
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
@@ -41,10 +41,10 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     ref,
   ) => {
     const classes = cn(
-      'rounded-2xl transition-all duration-normal',
+      'rounded-lg transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]',
       variantStyles[variant],
       padding !== 'none' && paddingStyles[padding],
-      (hover || variant === 'interactive') && 'hover:shadow-panel',
+      (hover || variant === 'interactive') && 'transition-all duration-200',
       className,
     );
 
@@ -54,9 +54,8 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           ref={ref}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           className={classes}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           {...(props as any)}
         >
           {children}
@@ -86,8 +85,8 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
 }) => (
   <div
     className={cn(
-      'mb-4 flex items-start justify-between gap-4',
-      bordered && 'border-b border-border pb-4',
+      'mb-5 flex items-start justify-between gap-5',
+      bordered && 'border-b border-border pb-5',
       className,
     )}
     {...props}
@@ -149,7 +148,7 @@ export const CardFooter: React.FC<CardFooterProps> = ({
 }) => (
   <div
     className={cn(
-      'mt-4 flex items-center justify-end gap-2 pt-4',
+      'mt-5 flex items-center justify-end gap-2 pt-5',
       bordered && 'border-t border-border',
       className,
     )}

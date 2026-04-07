@@ -5,7 +5,7 @@
 import React, { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import Badge from '@/components/ui/Badge';
 
 interface YOLOControlsProps {
   /** 是否启用 YOLO 检测 */
@@ -44,7 +44,7 @@ export const YOLOControls: React.FC<YOLOControlsProps> = memo(({
       className={cn(
         'flex items-center gap-2 px-3 py-1.5',
         'bg-black/60 backdrop-blur-sm rounded-lg',
-        'border border-white/10',
+        'border border-border-strong',
         className
       )}
     >
@@ -60,14 +60,14 @@ export const YOLOControls: React.FC<YOLOControlsProps> = memo(({
 
       {/* Detection Count */}
       {enabled && detectionCount > 0 && (
-        <Badge variant={hasActiveAlerts ? 'error' : 'info'}>
+        <Badge variant={hasActiveAlerts ? 'danger' : 'info'}>
           {detectionCount}
         </Badge>
       )}
 
       {/* Status Indicator */}
       {enabled && (
-        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+        <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
       )}
     </div>
   );

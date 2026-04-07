@@ -58,4 +58,12 @@ export const streamAPI = {
   create: async (data: Partial<Stream>) => {
     return await apiClient.post<{ code: number; data: Stream }>('/streams', data);
   },
+
+  update: async (id: string, data: Partial<Stream>) => {
+    return await apiClient.put<{ code: number; data: Stream }>(`/streams/${id}`, data);
+  },
+
+  delete: async (id: string) => {
+    return await apiClient.delete<{ code: number; message: string }>(`/streams/${id}`);
+  },
 };

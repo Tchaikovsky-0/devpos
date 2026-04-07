@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
-import { ContextActionStrip } from '@/components/openclaw';
 import { composeOpenClaw } from '@/components/openclaw/openclawBridge';
 import { useGetTasksQuery } from '@/store/api/tasksApi';
 import { useGetAlertsQuery } from '@/store/api/alertsApi';
@@ -11,6 +10,7 @@ import {
   StatusPill,
   WorkspacePanel,
 } from '@/components/workspace/WorkspacePrimitives';
+import { AIFab, type AIFabAction } from '@/components/layout/AIFab';
 import { cn } from '@/lib/utils';
 
 interface WorkspaceTask {
@@ -43,13 +43,13 @@ function adaptApiTask(task: Record<string, unknown>): WorkspaceTask {
 
 export default function TasksWorkspace() {
   const { data: tasksResponse, isLoading: tasksLoading } = useGetTasksQuery({ page_size: 200 });
-  const apiTasks: WorkspaceTask[] = (tasksResponse?.data as unknown[] as Record<string, unknown>[])?.map(adaptApiTask) ?? [];
+  const apiTasks: WorkspaceTask[] = (tasksResponse?.data?.items as unknown as Record<string, unknown>[])?.map(adaptApiTask) ?? [];
 
   const { data: alertsResponse } = useGetAlertsQuery({ page_size: 200 });
-  const apiAlerts = (alertsResponse?.data as unknown[] as Record<string, unknown>[]) ?? [];
+  const apiAlerts = (alertsResponse?.data?.items as unknown as Record<string, unknown>[]) ?? [];
 
   const { data: streamsResponse } = useGetStreamsQuery({ page_size: 200 });
-  const apiStreams = (streamsResponse?.data as unknown[] as Record<string, unknown>[]) ?? [];
+  const apiStreams = (streamsResponse?.data?.items as unknown as Record<string, unknown>[]) ?? [];
 
   function getSourceSummary(sourceType: string, sourceId: string) {
     if (sourceType === '画面') {
@@ -72,43 +72,41 @@ export default function TasksWorkspace() {
     );
   }
 
+  // AIFab 操作
+  const aiActions: AIFabAction[] = useMemo(
+    () => [
+      {
+        label: '拆解当前任务',
+        description: selectedTask ? selectedTask.title : undefined,
+        tone: 'accent',
+        onClick: () =>
+          composeOpenClaw({
+            prompt: `请拆解任务"${selectedTask?.title ?? ''}"并给出执行顺序。`,
+            source: selectedTask?.title,
+          }),
+      },
+      {
+        label: '补全任务说明',
+        onClick: () =>
+          composeOpenClaw({
+            prompt: `请补全任务"${selectedTask?.title ?? ''}"的执行说明。`,
+            source: selectedTask?.title,
+          }),
+      },
+      {
+        label: '回填执行摘要',
+        onClick: () =>
+          composeOpenClaw({
+            prompt: `请为任务"${selectedTask?.title ?? ''}"生成执行摘要。`,
+            source: selectedTask?.title,
+          }),
+      },
+    ],
+    [selectedTask],
+  );
+
   return (
     <div className="flex h-full flex-col gap-4 p-4 md:p-6">
-      <ContextActionStrip
-        title="智能协同跟随任务流转"
-        summary={
-          selectedTask
-            ? `已锁定 ${selectedTask.title}，可以继续拆解任务、补全说明并回填执行摘要。`
-            : '当前没有可用任务。'
-        }
-        actions={[
-          {
-            label: '拆解当前任务',
-            onClick: () =>
-              composeOpenClaw({
-                prompt: `请拆解任务“${selectedTask?.title ?? ''}”并给出执行顺序。`,
-                source: selectedTask?.title,
-              }),
-            tone: 'accent',
-          },
-          {
-            label: '补全任务说明',
-            onClick: () =>
-              composeOpenClaw({
-                prompt: `请补全任务“${selectedTask?.title ?? ''}”的执行说明。`,
-                source: selectedTask?.title,
-              }),
-          },
-          {
-            label: '回填执行摘要',
-            onClick: () =>
-              composeOpenClaw({
-                prompt: `请为任务“${selectedTask?.title ?? ''}”生成执行摘要。`,
-                source: selectedTask?.title,
-              }),
-          },
-        ]}
-      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <MetricTile label="待执行" value={apiTasks.filter((task) => task.status === '待执行' || task.status === 'pending').length} helper="优先把高风险任务推进到执行状态" />
@@ -121,7 +119,6 @@ export default function TasksWorkspace() {
           <SectionHeader
             eyebrow="任务协同"
             title="执行链"
-            description="人工任务与智能派单统一进入一条执行链，不再拆出额外的流程页。"
           />
           <div className="mt-4 space-y-3">
             {apiTasks.map((task) => (
@@ -220,6 +217,9 @@ export default function TasksWorkspace() {
           </WorkspacePanel>
         </aside>
       </div>
+
+      {/* AI 浮动操作按钮 */}
+      <AIFab actions={aiActions} />
     </div>
   );
 }

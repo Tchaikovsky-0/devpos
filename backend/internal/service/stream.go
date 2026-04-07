@@ -24,6 +24,10 @@ type CreateStreamRequest struct {
 	LNG         float64 `json:"lng"`
 	Description string  `json:"description"`
 	IsActive    *bool   `json:"is_active"`
+	Protocol    string  `json:"protocol"`
+	StreamURL   string  `json:"stream_url"`
+	Username    string  `json:"username"`
+	Password    string  `json:"password"`
 }
 
 type UpdateStreamRequest struct {
@@ -36,6 +40,10 @@ type UpdateStreamRequest struct {
 	Description *string  `json:"description"`
 	IsActive    *bool    `json:"is_active"`
 	Status      *string  `json:"status"`
+	Protocol    *string  `json:"protocol"`
+	StreamURL   *string  `json:"stream_url"`
+	Username    *string  `json:"username"`
+	Password    *string  `json:"password"`
 }
 
 func (s *StreamService) List(tenantID string, p pagination.Params) ([]model.Stream, int64, error) {
@@ -66,17 +74,32 @@ func (s *StreamService) Create(tenantID string, req CreateStreamRequest) (*model
 		isActive = *req.IsActive
 	}
 
+	protocol := req.Protocol
+	if protocol == "" {
+		protocol = "rtsp"
+	}
+
+	streamURL := req.StreamURL
+	if streamURL == "" {
+		streamURL = req.URL
+	}
+
 	stream := &model.Stream{
-		Name:        req.Name,
-		Type:        req.Type,
-		URL:         req.URL,
-		Location:    req.Location,
-		LAT:         req.LAT,
-		LNG:         req.LNG,
-		Description: req.Description,
-		IsActive:    isActive,
-		Status:      "offline",
-		TenantID:    tenantID,
+		Name:         req.Name,
+		Type:         req.Type,
+		URL:          req.URL,
+		Location:     req.Location,
+		LAT:          req.LAT,
+		LNG:          req.LNG,
+		Description:  req.Description,
+		IsActive:     isActive,
+		Status:       "offline",
+		TenantID:     tenantID,
+		Protocol:     protocol,
+		StreamURL:    streamURL,
+		Username:     req.Username,
+		Password:     req.Password,
+		HealthStatus: "unknown",
 	}
 
 	if err := s.db.Create(stream).Error; err != nil {
@@ -119,6 +142,18 @@ func (s *StreamService) Update(tenantID, id string, req UpdateStreamRequest) (*m
 	}
 	if req.Status != nil {
 		updates["status"] = *req.Status
+	}
+	if req.Protocol != nil {
+		updates["protocol"] = *req.Protocol
+	}
+	if req.StreamURL != nil {
+		updates["stream_url"] = *req.StreamURL
+	}
+	if req.Username != nil {
+		updates["username"] = *req.Username
+	}
+	if req.Password != nil {
+		updates["password"] = *req.Password
 	}
 
 	if len(updates) > 0 {

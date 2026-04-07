@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bot, RefreshCw, ScanSearch, Siren, Waves } from 'lucide-react';
 import { useGetStreamsQuery } from '@/store/api/streamsApi';
 import { useWebSocket } from '@/hooks';
-import { Button } from '../components/ui/Button';
-import { LayoutSwitcher } from '../components/stream';
-import { StreamDevice, StreamGrid, StreamItem, StreamList } from '../components/stream';
-import { OpenClawMessage, OpenClawPanel } from '../components/openclaw';
-import { YOLODetection } from '../components/yolo/YOLOOverlay';
-import { MetaPill, PageHeader, SectionBlock } from '../components/workspace/Workbench';
-import { StatusIndicator } from '../components/ui/StatusIndicator';
+import { Button } from '@/components/ui/Button';
+import { LayoutSwitcher } from '@/components/stream';
+import { StreamDevice, StreamGrid, StreamItem, StreamList } from '@/components/stream';
+import { OpenClawPanel } from '@/components/openclaw';
+import { YOLODetection } from '@/components/yolo/YOLOOverlay';
+import { MetaPill, PageHeader, SectionBlock } from '@/components/workspace/Workbench';
+import { StatusIndicator } from '@/components/ui/StatusIndicator';
 
 const defaultSuggestions = [
   '显示所有离线设备',
@@ -40,7 +40,7 @@ function toStreamItem(stream: { id: string; name: string; type: string; status: 
 
 export function Monitor() {
   const { data: streamsData, isLoading, refetch } = useGetStreamsQuery({});
-  const streams = useMemo(() => streamsData?.data ?? [], [streamsData?.data]);
+  const streams = useMemo(() => streamsData?.data?.items ?? [], [streamsData?.data]);
 
   const [layout, setLayout] = useState<'1x1' | '2x2' | '3x3' | '4x4' | 'auto'>('2x2');
   const [selectedStreamId, setSelectedStreamId] = useState<string | null>(null);
@@ -48,8 +48,6 @@ export function Monitor() {
   const [playingIds, setPlayingIds] = useState<Set<string>>(new Set());
   const [detections, setDetections] = useState<Record<string, YOLODetection[]>>({});
   const [openClawOpen, setOpenClawOpen] = useState(false);
-  const [openClawMessages, setOpenClawMessages] = useState<OpenClawMessage[]>([]);
-  const [openClawThinking, setOpenClawThinking] = useState(false);
 
   const { isConnected: wsConnected } = useWebSocket({
     autoConnect: true,
@@ -62,6 +60,7 @@ export function Monitor() {
           ...previous,
           [detection.stream_id]: detection.detections.map((item) => ({
             class: item.class,
+            class_name: item.class,
             confidence: item.confidence,
             bbox: item.bbox,
           })),
@@ -101,52 +100,13 @@ export function Monitor() {
   }, []);
 
   const handleFullscreen = useCallback((_id: string) => {
+    void _id;
     // TODO: implement fullscreen
   }, []);
 
   const handleRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
-
-  const handleSendMessage = useCallback((message: string) => {
-    const userMessage: OpenClawMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
-    setOpenClawMessages((previous) => [...previous, userMessage]);
-    setOpenClawThinking(true);
-
-    window.setTimeout(() => {
-      const responses = [
-        {
-          content: `已联动查询“${message}”。\n\n当前发现 2 个相关事件，建议先处理离线设备再回看告警画面。`,
-          suggestions: ['显示离线设备', '打开告警中心', '生成巡检摘要'],
-        },
-        {
-          content: '主监控面状态如下：\n- 在线设备 6 台\n- 离线设备 1 台\n- 告警队列 2 条\n\n是否需要我继续生成处置建议？',
-          suggestions: ['生成处置建议', '查看视频墙', '打开报告'],
-        },
-        {
-          content: '已完成快速分析：\n- 3 号区域有持续活动\n- 蓝藻识别热度较上一周期上升 15%\n- 建议安排值班员复核画面',
-          suggestions: ['查看 3 号区域', '生成工单', '导出摘要'],
-        },
-      ];
-
-      const response = responses[Math.floor(Math.random() * responses.length)];
-      const aiMessage: OpenClawMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response.content,
-        timestamp: new Date(),
-        suggestions: response.suggestions,
-      };
-
-      setOpenClawMessages((previous) => [...previous, aiMessage]);
-      setOpenClawThinking(false);
-    }, 1400);
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -175,7 +135,6 @@ export function Monitor() {
       <PageHeader
         eyebrow="Operations"
         title="实时监控"
-        description="把设备列表、主视频墙和上下文处置面板固定在同一屏里，减少在多个页面之间来回切换。"
         meta={
           <>
             <MetaPill label="在线设备" value={`${onlineCount}/${streams.length}`} tone="success" />
@@ -212,7 +171,6 @@ export function Monitor() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-tertiary">Primary Workspace</p>
-                <p className="mt-2 text-sm text-text-secondary">当前画面按业务优先级组织，支持快速选择与联动分析。</p>
               </div>
               <div className="flex items-center gap-2">
                 <StatusIndicator status={wsConnected ? 'online' : 'warning'} showLabel label={wsConnected ? '实时推送正常' : '等待连接'} />
@@ -313,7 +271,6 @@ export function Monitor() {
                   type="button"
                   onClick={() => {
                     setOpenClawOpen(true);
-                    handleSendMessage(suggestion);
                   }}
                   className="flex w-full items-center justify-between rounded-[18px] bg-bg-surface px-4 py-3 text-left text-sm text-text-secondary transition-colors hover:text-text-primary"
                 >
@@ -336,10 +293,7 @@ export function Monitor() {
       <OpenClawPanel
         isOpen={openClawOpen}
         onClose={() => setOpenClawOpen(false)}
-        messages={openClawMessages}
-        onSendMessage={handleSendMessage}
         suggestions={defaultSuggestions}
-        isThinking={openClawThinking}
       />
     </div>
   );

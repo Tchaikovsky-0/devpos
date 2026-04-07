@@ -42,7 +42,7 @@ export const alertsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({
+              ...result.data.items.map(({ id }) => ({
                 type: 'Alert' as const,
                 id,
               })),

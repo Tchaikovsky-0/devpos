@@ -2,6 +2,7 @@ import React, { memo, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { YOLODetection } from '@/components/yolo/YOLOOverlay';
 import { VideoStreamPlayer, StreamStatus } from './VideoStreamPlayer';
+import { Plane, Camera } from 'lucide-react';
 
 export type LayoutType = '1x1' | '2x2' | '3x3' | '4x4' | 'auto';
 
@@ -64,8 +65,11 @@ export const StreamGrid: React.FC<StreamGridProps> = memo(
 
     if (visibleStreams.length === 0) {
       return (
-        <div className={cn('flex h-full items-center justify-center rounded-[24px] border border-dashed border-border bg-bg-surface/60', className)}>
-          <div className="text-center">
+        <div className={cn('flex h-full items-center justify-center rounded-lg border border-dashed border-border bg-bg-hover', className)}>
+          <div className="text-center p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-bg-hover mx-auto mb-3">
+              <Camera className="h-6 w-6 text-text-tertiary" />
+            </div>
             <p className="text-lg font-semibold tracking-[-0.03em] text-text-primary">暂无视频流</p>
             <p className="mt-2 text-sm text-text-secondary">检查设备链路后，视频墙会自动恢复。</p>
           </div>
@@ -74,54 +78,65 @@ export const StreamGrid: React.FC<StreamGridProps> = memo(
     }
 
     return (
-      <div className={cn(compact ? 'space-y-3' : 'space-y-5', className)}>
+      <div className={cn(compact ? 'space-y-1' : 'space-y-1 h-full flex flex-col', className)}>
         {featuredStreams.length > 0 && (
-          <section>
-            <div className={cn('flex items-center justify-between', compact ? 'mb-2' : 'mb-3')}>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-tertiary">无人机画面</p>
-                {!compact ? (
-                  <p className="mt-1 text-sm text-text-secondary">优先保留空域与巡线视角，作为现场态势锚点。</p>
-                ) : null}
+          <section className={compact ? '' : 'flex-shrink-0'}>
+            <div className={cn('flex items-center justify-between', compact ? 'mb-3' : 'mb-4')}>
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
+                  <Plane className="h-3.5 w-3.5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-tertiary">无人机画面</p>
+                  {!compact ? (
+                    <p className="mt-1 text-sm text-text-secondary">优先保留空域与巡线视角，作为现场态势锚点。</p>
+                  ) : null}
+                </div>
               </div>
-              <span className="rounded-full bg-bg-surface px-3 py-1 text-xs text-text-secondary">
+              <span className="rounded-full bg-bg-tertiary/60 px-3 py-1 text-xs font-medium text-text-secondary border border-border-subtle">
                 {featuredStreams.length} 路
               </span>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-[1px] bg-bg-hover border border-border rounded-lg overflow-hidden md:grid-cols-2">
               {featuredStreams.map((stream) => (
-                <StreamCell
-                  key={stream.id}
-                  stream={stream}
-                  isSelected={selectedId === stream.id}
-                  isPlaying={playingIds?.has(stream.id) ?? false}
-                  detections={detections[stream.id] || []}
-                  yoloEnabled={yoloEnabled}
-                  onClick={onStreamClick}
-                  onTogglePlay={onTogglePlay}
-                  onFullscreen={onFullscreen}
-                />
+                <div key={stream.id} className="animate-in fade-in zoom-in-95 duration-300">
+                  <StreamCell
+                    stream={stream}
+                    isSelected={selectedId === stream.id}
+                    isPlaying={playingIds?.has(stream.id) ?? false}
+                    detections={detections[stream.id] || []}
+                    yoloEnabled={yoloEnabled}
+                    onClick={onStreamClick}
+                    onTogglePlay={onTogglePlay}
+                    onFullscreen={onFullscreen}
+                  />
+                </div>
               ))}
             </div>
           </section>
         )}
 
         {gridStreams.length > 0 && (
-          <section>
-            <div className={cn('flex items-center justify-between', compact ? 'mb-2' : 'mb-3')}>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-tertiary">固定监控</p>
-                {!compact ? (
-                  <p className="mt-1 text-sm text-text-secondary">常规监控位按值守优先级统一编排。</p>
-                ) : null}
+          <section className={compact ? '' : 'flex-1 min-h-0'}>
+            <div className={cn('flex items-center justify-between', compact ? 'mb-3' : 'mb-4')}>
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
+                  <Camera className="h-3.5 w-3.5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-tertiary">固定监控</p>
+                  {!compact ? (
+                    <p className="mt-1 text-sm text-text-secondary">常规监控位按值守优先级统一编排。</p>
+                  ) : null}
+                </div>
               </div>
-              <span className="rounded-full bg-bg-surface px-3 py-1 text-xs text-text-secondary">
+              <span className="rounded-full bg-bg-tertiary/60 px-3 py-1 text-xs font-medium text-text-secondary border border-border-subtle">
                 {gridStreams.length} 路
               </span>
             </div>
             <div
               className={cn(
-                'grid gap-3',
+                'grid gap-[1px] bg-bg-hover border border-border rounded-lg overflow-hidden h-full',
                 config.cols === 1 && 'grid-cols-1',
                 config.cols === 2 && 'grid-cols-1 xl:grid-cols-2',
                 config.cols === 3 && 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3',
@@ -129,17 +144,18 @@ export const StreamGrid: React.FC<StreamGridProps> = memo(
               )}
             >
               {gridStreams.map((stream) => (
-                <StreamCell
-                  key={stream.id}
-                  stream={stream}
-                  isSelected={selectedId === stream.id}
-                  isPlaying={playingIds?.has(stream.id) ?? false}
-                  detections={detections[stream.id] || []}
-                  yoloEnabled={yoloEnabled}
-                  onClick={onStreamClick}
-                  onTogglePlay={onTogglePlay}
-                  onFullscreen={onFullscreen}
-                />
+                <div key={stream.id} className="animate-in fade-in zoom-in-95 duration-300 h-full">
+                  <StreamCell
+                    stream={stream}
+                    isSelected={selectedId === stream.id}
+                    isPlaying={playingIds?.has(stream.id) ?? false}
+                    detections={detections[stream.id] || []}
+                    yoloEnabled={yoloEnabled}
+                    onClick={onStreamClick}
+                    onTogglePlay={onTogglePlay}
+                    onFullscreen={onFullscreen}
+                  />
+                </div>
               ))}
             </div>
           </section>
@@ -163,7 +179,7 @@ interface StreamCellProps {
 }
 
 const StreamCell: React.FC<StreamCellProps> = memo(
-  ({ stream, isSelected, isPlaying, detections, yoloEnabled, onClick, onTogglePlay, onFullscreen }) => (
+  ({ stream, isSelected: _isSelected, isPlaying, detections, yoloEnabled, onClick, onTogglePlay, onFullscreen }) => (
     <VideoStreamPlayer
       id={stream.id}
       name={stream.name}
@@ -176,7 +192,7 @@ const StreamCell: React.FC<StreamCellProps> = memo(
       onClick={onClick}
       onTogglePlay={onTogglePlay}
       onFullscreen={onFullscreen}
-      className={isSelected ? 'ring-2 ring-accent' : ''}
+      className="rounded-none border-0 h-full w-full"
     />
   ),
 );

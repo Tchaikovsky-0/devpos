@@ -53,6 +53,7 @@ temp
 # OS
 .DS_Store
 Thumbs.db
+._*
 
 # Docker
 docker-compose.yaml

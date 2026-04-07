@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"xunjianbao-backend/internal/service"
@@ -134,4 +136,109 @@ func (h *AIHandler) GenerateReport(c *gin.Context) {
 	response.Success(c, gin.H{
 		"report": report,
 	})
+}
+
+// =========================================================================
+// Enhanced endpoints: Chat with session, streaming, session management
+// =========================================================================
+
+// ChatWithSession handles enhanced chat with session tracking and OpenClaw fallback.
+func (h *AIHandler) ChatWithSession(c *gin.Context) {
+	var req service.ChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.aiService.ChatWithSession(c.Request.Context(), req)
+	if err != nil {
+		response.InternalError(c, "AI chat failed")
+		return
+	}
+
+	response.Success(c, result)
+}
+
+// ChatStream handles SSE streaming chat.
+func (h *AIHandler) ChatStream(c *gin.Context) {
+	var req service.ChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "streaming not supported"})
+		return
+	}
+
+	if err := h.aiService.ChatStreamSSE(c.Request.Context(), req, c.Writer, flusher); err != nil {
+		// Error already partially streamed; just log it
+		_ = err
+	}
+}
+
+// GetSessions returns all chat sessions.
+func (h *AIHandler) GetSessions(c *gin.Context) {
+	sessions, err := h.aiService.GetSessions()
+	if err != nil {
+		response.InternalError(c, "failed to get sessions")
+		return
+	}
+
+	response.Success(c, gin.H{
+		"sessions": sessions,
+	})
+}
+
+// GetSession returns a single session by ID.
+func (h *AIHandler) GetSession(c *gin.Context) {
+	sessionID := c.Param("id")
+	if sessionID == "" {
+		response.BadRequest(c, "session id is required")
+		return
+	}
+
+	session, err := h.aiService.GetSession(sessionID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
+	}
+
+	response.Success(c, session)
+}
+
+// DeleteSession deletes a session by ID.
+func (h *AIHandler) DeleteSession(c *gin.Context) {
+	sessionID := c.Param("id")
+	if sessionID == "" {
+		response.BadRequest(c, "session id is required")
+		return
+	}
+
+	if err := h.aiService.DeleteSession(sessionID); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		return
+	}
+
+	response.Success(c, gin.H{"message": "session deleted"})
+}
+
+// RegisterExtraRoutes registers additional AI routes on a protected router group.
+// This avoids modifying router.go directly (parallel-safe).
+func (h *AIHandler) RegisterExtraRoutes(protected *gin.RouterGroup) {
+	ai := protected.Group("/ai")
+	{
+		ai.POST("/chat", h.ChatWithSession)
+		ai.POST("/chat/stream", h.ChatStream)
+		ai.GET("/sessions", h.GetSessions)
+		ai.GET("/sessions/:id", h.GetSession)
+		ai.DELETE("/sessions/:id", h.DeleteSession)
+	}
 }

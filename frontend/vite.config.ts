@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 3000,  // 前端开发服务器端口
     proxy: {
       "/api": {
         target: "http://localhost:8094",
@@ -22,6 +23,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './tests/setup.ts',
+    include: ['tests/unit/**/*.test.{ts,tsx}', 'tests/integration/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/._*'],
   },
   build: {
     chunkSizeWarningLimit: 500,
@@ -46,8 +49,6 @@ export default defineConfig({
           'vendor-motion': ['framer-motion', 'lucide-react'],
           // 数据获取和缓存
           'vendor-query': ['@tanstack/react-query'],
-          // Redux Toolkit + RTK Query
-          'vendor-redux': ['@reduxjs/toolkit', 'react-redux'],
         },
       },
     },

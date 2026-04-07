@@ -1,13 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
+
+	// SQLite 驱动保留以备参考（已迁移至 MySQL）
+	// "gorm.io/driver/sqlite"
+	// _ "modernc.org/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
@@ -17,6 +21,7 @@ import (
 	"xunjianbao-backend/internal/model"
 	"xunjianbao-backend/internal/router"
 	"xunjianbao-backend/internal/service"
+	envConfig "xunjianbao-backend/pkg/config"
 )
 
 func mustEnv(key string) string {
@@ -41,28 +46,48 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	port := envWithDefault("PORT", "8094")
 
-	// 2. 验证JWT密钥
-	if len(jwtSecret) < 32 {
-		log.Fatal("JWT_SECRET must be at least 32 characters")
-	}
-	middleware.SetJWTSecret(jwtSecret)
+	// 2. 记录环境信息
+	envConfig.LogEnvironmentInfo()
 
-	// 3. 连接数据库
+	// 3. 验证JWT密钥（仅生产环境强制要求）
+	if len(jwtSecret) < 32 && !envConfig.IsDevelopment() {
+		log.Fatal("JWT_SECRET must be at least 32 characters in production")
+	}
+	if jwtSecret != "" {
+		middleware.SetJWTSecret(jwtSecret)
+	}
+
+	// 开发环境设置默认JWT密钥
+	if envConfig.IsDevelopment() && jwtSecret == "" {
+		log.Println("🔧 [DEV] 使用默认JWT密钥（仅用于开发）")
+		middleware.SetJWTSecret("dev-secret-key-for-testing-only-do-not-use-in-prod")
+	}
+
+	// 3. 连接数据库（MySQL）
 	var db *gorm.DB
 	var err error
 
-	if databaseURL != "" {
-		// 使用MySQL
-		db, err = gorm.Open(mysql.Open(databaseURL), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
-		})
-	} else {
-		// 使用SQLite作为开发数据库
-		db, err = gorm.Open(sqlite.Open("xunjianbao.db"), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
-		})
-		log.Println("Using SQLite database (development mode)")
+	// 构建 MySQL DSN：优先使用 DATABASE_URL，否则从独立环境变量构建
+	if databaseURL == "" {
+		dbHost := envWithDefault("DB_HOST", "localhost")
+		dbPort := envWithDefault("DB_PORT", "3306")
+		dbUser := envWithDefault("DB_USER", "xunjianbao")
+		dbPassword := envWithDefault("DB_PASSWORD", "xunjianbao_dev")
+		dbName := envWithDefault("DB_NAME", "xunjianbao")
+		databaseURL = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			dbUser, dbPassword, dbHost, dbPort, dbName)
 	}
+
+	log.Printf("Connecting to MySQL database...")
+	db, err = gorm.Open(mysql.Open(databaseURL), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+
+	// 旧 SQLite 逻辑（已弃用，保留备参考）：
+	// db, err = gorm.Open(sqlite.Open("xunjianbao.db"), &gorm.Config{
+	// 	Logger: logger.Default.LogMode(logger.Info),
+	// })
+	// log.Println("Using SQLite database (development mode)")
 
 	if err != nil {
 		log.Fatal("failed to connect database: ", err)
@@ -96,6 +121,8 @@ func main() {
 		&model.DefectEvidence{},
 		&model.DuplicateGroup{},
 		&model.ReportDraft{},
+		&model.AlertRule{},
+		&model.Role{},
 	)
 
 	// 6. 创建默认管理员用户

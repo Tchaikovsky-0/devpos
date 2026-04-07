@@ -63,7 +63,7 @@ export const reportsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({ type: 'Report' as const, id })),
+              ...result.data.items.map(({ id }: { id: string }) => ({ type: 'Report' as const, id })),
               { type: 'Report' as const, id: 'LIST' },
             ]
           : [{ type: 'Report' as const, id: 'LIST' }],

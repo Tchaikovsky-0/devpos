@@ -10,7 +10,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password_change_me}
       MYSQL_DATABASE: xunjianbao
       MYSQL_USER: ${MYSQL_USER:-xunjianbao}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_password}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-xunjianbao_dev}
       TZ: Asia/Shanghai
     ports:
       - "3306:3306"
@@ -51,7 +51,7 @@ services:
     ports:
       - "8094:8094"
     environment:
-      DATABASE_URL: ${MYSQL_USER:-xunjianbao}:${MYSQL_PASSWORD:-change_password}@tcp(mysql:3306)/xunjianbao?charset=utf8mb4&parseTime=True&loc=Local
+      DATABASE_URL: ${MYSQL_USER:-xunjianbao}:${MYSQL_PASSWORD:-xunjianbao_dev}@tcp(mysql:3306)/xunjianbao?charset=utf8mb4&parseTime=True&loc=Local
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-at-least-32-chars}
       PORT: "8094"
       REDIS_URL: redis://:${REDIS_PASSWORD:-}@redis:6379
@@ -136,18 +136,18 @@ services:
       timeout: 10s
       retries: 3
 
-  # OpenClaw 服务
-  openclaw:
-    image: openclaw/openclaw:latest
-    container_name: xunjianbao-openclaw-dev
-    restart: always
-    ports:
-      - "8096:8096"
-    environment:
-      PORT: "8096"
-      TOKEN: ${OPENCLAW_TOKEN:-}
-    networks:
-      - xunjianbao-network
+  # OpenClaw 服务（暂时禁用，镜像不可用）
+  # openclaw:
+  #   image: openclaw/openclaw:latest
+  #   container_name: xunjianbao-openclaw-dev
+  #   restart: always
+  #   ports:
+  #     - "8096:8096"
+  #   environment:
+  #     PORT: "8096"
+  #     TOKEN: ${OPENCLAW_TOKEN:-}
+  #   networks:
+  #     - xunjianbao-network
 
 networks:
   xunjianbao-network:

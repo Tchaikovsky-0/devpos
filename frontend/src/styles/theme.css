@@ -1,0 +1,636 @@
+/* ============================================
+   巡检宝 - 统一主题系统 v3.0
+   版本: v3.0.0
+   更新日期: 2026-04-06
+   核心理念: 专业 / 克制 / 高效 / 耐疲劳
+   ============================================ */
+
+/* ============================================
+   1. 基础主题变量定义
+   ============================================ */
+
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* ── 背景层次 (4层递进) ── */
+  --canvas: 10 14 20;           /* 最深层：页面背景 #0A0E14 */
+  --surface: 13 17 23;          /* 深：卡片背景 #0D1117 */
+  --surface-raised: 22 27 34;   /* 提升：悬浮元素 #161B22 */
+  --surface-elevated: 28 33 40; /* 更高：菜单/弹窗 #1C2128 */
+
+  /* ── 主强调色：科技蓝 ── */
+  --accent: 88 166 255;         /* 主色 #58A6FF */
+  --accent-strong: 56 139 253;  /* 深色 #388BFD */
+  --accent-soft: 121 184 255;   /* 浅色 #79B8FF */
+
+  /* ── 功能色 ── */
+  --success: 63 185 80;         /* 成功 #3FB950 */
+  --warning: 210 153 34;        /* 警告 #D29922 */
+  --error: 248 81 73;           /* 错误 #F85149 */
+  --info: 88 166 255;           /* 信息 #58A6FF */
+
+  /* ── 文字层次 ── */
+  --text-primary: 240 246 252;   /* 主要 #F0F6FC */
+  --text-secondary: 139 148 158; /* 次要 #8B949E */
+  --text-tertiary: 110 118 129;  /* 辅助 #6E7681 */
+  --text-disabled: 72 79 88;     /* 禁用 #484F58 */
+
+  /* ── 边框层次 ── */
+  --border: 255 255 255 / 0.06;
+  --border-strong: 255 255 255 / 0.10;
+  --border-hover: 255 255 255 / 0.15;
+  --border-accent: 88 166 255 / 0.30;
+
+  /* ── 阴影系统 ── */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.6);
+  --shadow-float: 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-glow: 0 0 20px rgb(88 166 255 / 0.3);
+
+  /* ── 玻璃拟态 ── */
+  --glass-bg: rgba(255 255 255 / 0.03);
+  --glass-border: rgba(255 255 255 / 0.08);
+  --glass-blur: blur(20px);
+
+  /* ── 间距系统 ── */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+
+  /* ── 圆角系统 ── */
+  --radius-sm: 0.375rem;   /* 6px */
+  --radius-md: 0.5rem;     /* 8px */
+  --radius-lg: 0.75rem;    /* 12px */
+  --radius-xl: 1rem;       /* 16px */
+  --radius-2xl: 1.5rem;    /* 24px */
+  --radius-full: 9999px;
+
+  /* ── 过渡动画 ── */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-index 层级 ── */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-fixed: 1200;
+  --z-modal-backdrop: 1300;
+  --z-modal: 1400;
+  --z-popover: 1500;
+  --z-tooltip: 1600;
+}
+
+/* ============================================
+   2. 浅色主题覆盖
+   ============================================ */
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* ── 背景层次 ── */
+  --canvas: 248 250 252;        /* #F8FAFC */
+  --surface: 255 255 255;       /* #FFFFFF */
+  --surface-raised: 241 245 249; /* #F1F5F9 */
+  --surface-elevated: 226 232 240; /* #E2E8F0 */
+
+  /* ── 主强调色 ── */
+  --accent: 79 70 229;          /* #4F46E5 */
+  --accent-strong: 67 56 202;   /* #4338CA */
+  --accent-soft: 99 102 241;    /* #6366F1 */
+
+  /* ── 功能色 ── */
+  --success: 22 163 74;         /* #16A34A */
+  --warning: 217 119 6;         /* #D97706 */
+  --error: 220 38 38;           /* #DC2626 */
+  --info: 37 99 235;            /* #2563EB */
+
+  /* ── 文字层次 ── */
+  --text-primary: 15 23 42;     /* #0F172A */
+  --text-secondary: 71 85 105;  /* #475569 */
+  --text-tertiary: 148 163 184; /* #94A3B8 */
+  --text-disabled: 203 213 225; /* #CBD5E1 */
+
+  /* ── 边框层次 ── */
+  --border: 0 0 0 / 0.06;
+  --border-strong: 0 0 0 / 0.10;
+  --border-hover: 0 0 0 / 0.15;
+  --border-accent: 79 70 229 / 0.30;
+
+  /* ── 阴影系统 ── */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  --shadow-float: 0 8px 24px rgb(0 0 0 / 0.08);
+  --shadow-glow: 0 0 20px rgb(79 70 229 / 0.3);
+
+  /* ── 玻璃拟态 ── */
+  --glass-bg: rgba(0 0 0 / 0.02);
+  --glass-border: rgba(0 0 0 / 0.06);
+}
+
+/* ============================================
+   3. 主题切换过渡动画
+   ============================================ */
+
+html,
+html *,
+html *::before,
+html *::after {
+  transition: background-color var(--duration-slow) var(--ease-out),
+              border-color var(--duration-slow) var(--ease-out),
+              color var(--duration-slow) var(--ease-out),
+              fill var(--duration-slow) var(--ease-out),
+              stroke var(--duration-slow) var(--ease-out),
+              box-shadow var(--duration-slow) var(--ease-out);
+}
+
+/* 禁用某些元素的过渡以避免性能问题 */
+html pre,
+html code,
+html .no-transition,
+html .no-transition * {
+  transition: none !important;
+}
+
+/* ============================================
+   4. 兼容性变量映射
+   用于兼容旧版代码中的变量名
+   ============================================ */
+
+:root {
+  /* 背景映射 */
+  --bg-void: rgb(var(--canvas));
+  --bg-deepest: rgb(var(--canvas));
+  --bg-deep: rgb(var(--surface));
+  --bg-base: rgb(var(--surface-raised));
+  --bg-elevated: rgb(var(--surface-elevated));
+  --bg-surface: rgb(var(--surface-raised));
+  --bg-hover: rgb(var(--surface-elevated));
+  --bg-active: rgb(var(--accent) / 0.08);
+  --bg-darkest: rgb(0 0 0);
+
+  /* 文字映射 */
+  --text-primary-rgb: var(--text-primary);
+  --text-secondary-rgb: var(--text-secondary);
+  --text-tertiary-rgb: var(--text-tertiary);
+
+  /* 强调色映射 */
+  --accent-primary: rgb(var(--accent));
+  --accent-secondary: rgb(var(--accent-strong));
+  --accent-muted: rgb(var(--accent) / 0.10);
+  --accent-glow: rgb(var(--accent) / 0.4);
+
+  /* 功能色映射 */
+  --success-primary: rgb(var(--success));
+  --success-muted: rgb(var(--success) / 0.15);
+  --warning-primary: rgb(var(--warning));
+  --warning-muted: rgb(var(--warning) / 0.15);
+  --error-primary: rgb(var(--error));
+  --error-muted: rgb(var(--error) / 0.15);
+  --info-primary: rgb(var(--info));
+  --info-muted: rgb(var(--info) / 0.15);
+
+  /* 边框映射 */
+  --border-subtle: rgb(var(--border));
+  --border-default: rgb(var(--border-strong));
+  --border-hover: rgb(var(--border-hover));
+  --border-emphasis: rgb(var(--border-strong));
+  --border-active: rgb(var(--border-accent));
+
+  /* 阴影映射 */
+  --shadow-sm-old: var(--shadow-sm);
+  --shadow-md-old: var(--shadow-md);
+  --shadow-lg-old: var(--shadow-lg);
+  --shadow-xl-old: var(--shadow-xl);
+  --shadow-glow-old: var(--shadow-glow);
+  --shadow-hover: var(--shadow-float);
+  --shadow-panel: var(--shadow-md);
+  --shadow-elevated: var(--shadow-lg);
+  --shadow-float-old: var(--shadow-float);
+
+  /* 渐变 */
+  --gradient-accent: linear-gradient(135deg, rgb(var(--accent)) 0%, rgb(var(--accent-soft)) 100%);
+  --gradient-accent-hover: linear-gradient(135deg, rgb(var(--accent-soft)) 0%, rgb(var(--accent)) 100%);
+  --gradient-bg-subtle: linear-gradient(180deg, rgb(var(--accent) / 0.05) 0%, transparent 100%);
+
+  /* 玻璃拟态映射 */
+  --glass-premium-bg: linear-gradient(
+    135deg,
+    rgba(255 255 255 / 0.05) 0%,
+    rgba(255 255 255 / 0.02) 100%
+  );
+  --glass-premium-border: var(--glass-border);
+  --glass-premium-shadow: var(--shadow-float), inset 0 1px 0 rgba(255 255 255 / 0.05);
+
+  /* 光晕效果 */
+  --glow-accent: var(--shadow-glow);
+  --glow-accent-lg: 0 0 40px rgb(var(--accent) / 0.15);
+  --glow-success: 0 0 20px rgb(var(--success) / 0.3);
+  --glow-warning: 0 0 20px rgb(var(--warning) / 0.3);
+  --glow-error: 0 0 20px rgb(var(--error) / 0.3);
+
+  /* 缓动函数 */
+  --ease-default: var(--ease-out);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* 时长 */
+  --duration-fast-old: var(--duration-fast);
+  --duration-normal-old: var(--duration-normal);
+  --duration-slow-old: var(--duration-slow);
+}
+
+/* ============================================
+   5. 字体系统
+   ============================================ */
+
+:root {
+  --font-sans: 'Inter Variable', 'Inter', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  --font-chinese: 'Noto Sans SC', -apple-system, sans-serif;
+}
+
+/* ============================================
+   6. 基础样式重置
+   ============================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  color: rgb(var(--text-primary));
+  background-color: rgb(var(--canvas));
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   7. 滚动条样式
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--surface));
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--surface-raised));
+  border-radius: var(--radius-full);
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-tertiary) / 0.3);
+}
+
+/* Firefox 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--surface-raised)) rgb(var(--surface));
+}
+
+/* ============================================
+   8. 文本选择样式
+   ============================================ */
+
+::selection {
+  background: rgb(var(--accent) / 0.3);
+  color: rgb(var(--text-primary));
+}
+
+::-moz-selection {
+  background: rgb(var(--accent) / 0.3);
+  color: rgb(var(--text-primary));
+}
+
+/* ============================================
+   9. 焦点样式
+   ============================================ */
+
+:focus-visible {
+  outline: 2px solid rgb(var(--accent) / 0.6);
+  outline-offset: 2px;
+}
+
+/* ============================================
+   10. 链接样式
+   ============================================ */
+
+a {
+  color: rgb(var(--accent));
+  text-decoration: none;
+  transition: color var(--duration-normal) var(--ease-out);
+}
+
+a:hover {
+  color: rgb(var(--accent-soft));
+}
+
+/* ============================================
+   11. 图片和视频
+   ============================================ */
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ============================================
+   12. 按钮样式重置
+   ============================================ */
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ============================================
+   13. 输入框样式重置
+   ============================================ */
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+/* ============================================
+   14. 列表样式重置
+   ============================================ */
+
+ul,
+ol {
+  list-style: none;
+}
+
+/* ============================================
+   15. 表格样式重置
+   ============================================ */
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* ============================================
+   16. 实用工具类
+   ============================================ */
+
+/* 文本截断 */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 玻璃拟态 */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-premium {
+  background: var(--glass-premium-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-premium-border);
+  box-shadow: var(--glass-premium-shadow);
+}
+
+/* 发光效果 */
+.glow {
+  box-shadow: var(--glow-accent);
+}
+
+.glow-lg {
+  box-shadow: var(--glow-accent-lg);
+}
+
+.glow-success {
+  box-shadow: var(--glow-success);
+}
+
+.glow-warning {
+  box-shadow: var(--glow-warning);
+}
+
+.glow-error {
+  box-shadow: var(--glow-error);
+}
+
+/* 状态指示器 */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot-online {
+  background: rgb(var(--success));
+  box-shadow: var(--glow-success);
+}
+
+.status-dot-offline {
+  background: rgb(var(--text-disabled));
+}
+
+.status-dot-warning {
+  background: rgb(var(--warning));
+  box-shadow: var(--glow-warning);
+}
+
+.status-dot-error {
+  background: rgb(var(--error));
+  box-shadow: var(--glow-error);
+}
+
+/* 动画 */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgb(var(--accent) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgb(var(--accent) / 0.6);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s var(--ease-out) forwards;
+}
+
+/* 悬浮提升效果 */
+.hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out),
+              box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-float);
+}
+
+/* 骨架屏 */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--surface-raised)) 25%,
+    rgb(var(--surface-elevated)) 50%,
+    rgb(var(--surface-raised)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 加载动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* 脉冲动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 呼吸效果 */
+@keyframes breathe {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* 隐藏 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 禁用过渡 */
+.no-transition {
+  transition: none !important;
+}
+
+.no-transition * {
+  transition: none !important;
+}

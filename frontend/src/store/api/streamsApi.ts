@@ -38,7 +38,7 @@ export const streamsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.data.map(({ id }) => ({
+              ...result.data.items.map(({ id }) => ({
                 type: 'Stream' as const,
                 id,
               })),

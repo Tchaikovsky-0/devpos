@@ -42,6 +42,9 @@ export const baseApi = createApi({
     'ReportDraft',
     'Media',
     'MediaStatistics',
+    'OpenClawMission',
+    'OpenClawMissionStatistics',
+    'AutomationTemplate',
   ],
   endpoints: () => ({}),
 });

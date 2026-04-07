@@ -46,7 +46,7 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
       <div
-        className="absolute inset-0 surface-overlay animate-fade-in"
+        className="absolute inset-0 bg-black/50 animate-in fade-in duration-200"
         onClick={() => onOpenChange?.(false)}
       />
       <div className="relative z-10 max-h-full w-full max-w-[min(100%,44rem)]">
@@ -65,7 +65,7 @@ const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
         role="dialog"
         aria-modal="true"
         className={cn(
-          'relative w-full overflow-y-auto rounded-[28px] surface-float animate-enter',
+          'relative w-full overflow-y-auto rounded-lg bg-bg-secondary border border-border-subtle shadow-lg animate-in zoom-in-95 duration-300',
           'max-h-[min(88vh,860px)] max-w-lg',
           className,
         )}

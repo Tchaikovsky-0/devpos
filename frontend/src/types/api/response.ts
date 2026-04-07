@@ -12,13 +12,11 @@ export interface ApiResponse<T = unknown> {
 }
 
 /**
- * 分页响应结构
+ * 分页响应结构（嵌套版）
+ * 后端 PageOK -> response.Success(PageResult) 产生双层嵌套：
+ * { code, message, data: { items: T[], total, page, page_size } }
  */
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  total: number;
-  page: number;
-  page_size: number;
-}
+export interface PaginatedResponse<T> extends ApiResponse<{ items: T[]; total: number; page: number; page_size: number }> {}
 
 /**
  * API 错误响应
@@ -64,11 +62,12 @@ export function extractListData<T>(response: PaginatedResponse<T>): {
   pageSize: number;
   totalPages: number;
 } {
+  const page = response.data;
   return {
-    items: response.data,
-    total: response.total,
-    page: response.page,
-    pageSize: response.page_size,
-    totalPages: Math.ceil(response.total / response.page_size),
+    items: page.items,
+    total: page.total,
+    page: page.page,
+    pageSize: page.page_size,
+    totalPages: Math.ceil(page.total / page.page_size),
   };
 }

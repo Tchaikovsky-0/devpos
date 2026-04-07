@@ -1,30 +1,37 @@
+# =============================================================================
+# 多阶段构建: builder → runner
+# =============================================================================
+
+# Stage 1: Build
 FROM golang:1.23-alpine AS builder
+
+RUN apk --no-cache add ca-certificates tzdata git
+
+WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o server ./cmd/server
+
+# Stage 2: Minimal runtime
+FROM alpine:3.19
+
+RUN apk --no-cache add ca-certificates tzdata \
+    && addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-# 安装构建依赖
-RUN apk add --no-cache gcc musl-dev
+COPY --from=builder /build/server .
 
-# 复制源代码
-COPY . .
-
-# 下载依赖
-RUN go mod download
-
-# 构建
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
-
-# 运行阶段
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates tzdata
-
-WORKDIR /root/
-
-# 从构建阶段复制二进制文件
-COPY --from=builder /app/server .
-COPY --from=builder /app/internal ./internal
+# 非 root 用户运行
+USER appuser
 
 EXPOSE 8094
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD wget -qO- http://localhost:8094/health || exit 1
 
 CMD ["./server"]

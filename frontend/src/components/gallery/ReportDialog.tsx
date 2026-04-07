@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import { FileText, Download, Loader2, FileJson } from 'lucide-react';
+import { FileText, Download, Loader2, FileJson, AlertTriangle, CheckCircle } from 'lucide-react';
+import { DEFECT_FAMILY_LABELS, DEFECT_TYPE_LABELS, type DefectFamily, type DefectType } from '@/types/api/defectCase';
 
 interface Photo {
   id: number;
@@ -14,10 +15,27 @@ interface Photo {
   lng?: number;
 }
 
+export interface DefectRegion {
+  id: string;
+  bbox: [number, number, number, number];
+  defectType: DefectType;
+  family: DefectFamily;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  confidence: number;
+  confirmed: boolean;
+}
+
+export interface DefectAnalysisResult {
+  media_id: number;
+  regions: DefectRegion[];
+}
+
 interface ReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedPhotos: Photo[];
+  /** Optional: pre-confirmed defect analysis results to include in report */
+  defectResults?: DefectAnalysisResult[];
 }
 
 export const ReportDialog: React.FC<ReportDialogProps> = ({
