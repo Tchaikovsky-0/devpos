@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog';
-import { FileText, Download, Loader2 } from 'lucide-react';
-import { type DefectFamily, type DefectType } from '@/types/api/defectCase';
+import { FileText, Download, Loader2, FileJson } from 'lucide-react';
+import { DEFECT_FAMILY_LABELS, DEFECT_TYPE_LABELS, type DefectFamily, type DefectType } from '@/types/api/defectCase';
 
 interface Photo {
   id: number;
