@@ -22,6 +22,7 @@ import (
 	"xunjianbao-backend/internal/router"
 	"xunjianbao-backend/internal/service"
 	envConfig "xunjianbao-backend/pkg/config"
+	"xunjianbao-backend/pkg/redis"
 )
 
 func mustEnv(key string) string {
@@ -79,8 +80,12 @@ func main() {
 	}
 
 	log.Printf("Connecting to MySQL database...")
+	gormLogLevel := logger.Info
+	if !envConfig.IsDevelopment() {
+		gormLogLevel = logger.Warn
+	}
 	db, err = gorm.Open(mysql.Open(databaseURL), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(gormLogLevel),
 	})
 
 	// 旧 SQLite 逻辑（已弃用，保留备参考）：
@@ -95,8 +100,8 @@ func main() {
 
 	// 4. 配置连接池
 	sqlDB, _ := db.DB()
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetMaxOpenConns(20)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	// 5. 自动迁移
@@ -148,16 +153,23 @@ func main() {
 	engine.Use(gin.Recovery())
 	engine.Use(middleware.CORS())
 
-	// 8. 启动 WebSocket Hub
+	// 8. 初始化 Redis（非阻塞，连接失败仅禁用缓存）
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+	redis.Init(redisURL)
+
+	// 9. 启动 WebSocket Hub
 	wsHub := service.NewWebSocketHub()
 	go wsHub.Run()
 
-	// 9. 设置路由
+	// 10. 设置路由
 	cfg := config.Load()
 	r := router.NewRouter(engine, db, cfg, wsHub)
 	r.Setup()
 
-	// 9. 启动服务
+	// 11. 启动服务
 	log.Printf("Server starting on port %s", port)
 	if err := engine.Run(":" + port); err != nil {
 		log.Fatal("failed to start server: ", err)
