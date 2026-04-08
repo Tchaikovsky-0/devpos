@@ -17,6 +17,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, "/api/v1"),
       },
+      // 代理 /uploads 请求到后端 /api/v1/media/files
+      "/uploads": {
+        target: "http://localhost:8094",
+        changeOrigin: true,
+        rewrite: (path) => "/api/v1/media/files" + path.replace(/^\/uploads/, ""),
+      },
     }
   },
   test: {

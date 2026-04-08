@@ -54,12 +54,15 @@ coverage/
 # 后端 Go
 backend/vendor/
 backend/tmp/
+backend/server
+backend/main
 
 # 日志目录
 logs/
 *.pid
 
 # 测试结果
+test-reports/
 test-results/
 frontend/test-results/
 

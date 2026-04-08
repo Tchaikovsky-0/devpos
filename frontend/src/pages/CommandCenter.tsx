@@ -147,12 +147,11 @@ const CommandCenter: React.FC = () => {
   // 处理视频选择
   const handleStreamSelect = useCallback((streamId: string) => {
     setHighlightedStreamId(streamId);
-    console.log('Selected stream:', streamId);
   }, []);
 
   // 处理全屏
   const handleFullscreen = useCallback((streamId: string) => {
-    console.log('Fullscreen stream:', streamId);
+    // TODO: 实现全屏功能
   }, []);
 
   return (

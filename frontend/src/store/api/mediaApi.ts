@@ -9,7 +9,7 @@ import type {
   MediaListParams,
   MediaListResponse,
 } from '@/types/api';
-import type { FolderItem } from '@/types/api/media';
+import type { FolderItem, FolderPermission, GrantPermissionRequest, UpdatePermissionRequest, SetFolderPublicRequest } from '@/types/api/media';
 import type { DefectFamily, DefectType } from '@/types/api/defectCase';
 
 // Re-export for convenience
@@ -163,6 +163,70 @@ export const mediaApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Media' as const, id: 'FOLDERS' }],
     }),
 
+    /** 获取我有权限访问的根文件夹列表 */
+    listAccessibleFolders: builder.query<{ code: number; data: FolderItem[] }, void>({
+      query: () => '/media/folders/my',
+      providesTags: [{ type: 'Media' as const, id: 'FOLDERS' }],
+    }),
+
+    /** 获取文件夹权限列表 */
+    listFolderPermissions: builder.query<{ code: number; data: FolderPermission[] }, number>({
+      query: (folderId) => `/media/folders/${folderId}/permissions`,
+      providesTags: (_result, _error, folderId) => [
+        { type: 'Media' as const, id: `FOLDER_PERMS_${folderId}` },
+      ],
+    }),
+
+    /** 授权用户访问文件夹 */
+    grantFolderPermission: builder.mutation<{ code: number; data: FolderPermission }, { folderId: number; body: GrantPermissionRequest }>({
+      query: ({ folderId, body }) => ({
+        url: `/media/folders/${folderId}/permissions`,
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { folderId }) => [
+        { type: 'Media' as const, id: `FOLDER_PERMS_${folderId}` },
+        { type: 'Media' as const, id: 'FOLDERS' },
+      ],
+    }),
+
+    /** 更新用户权限级别 */
+    updateFolderPermission: builder.mutation<{ code: number; message: string }, { folderId: number; userId: number; body: UpdatePermissionRequest }>({
+      query: ({ folderId, userId, body }) => ({
+        url: `/media/folders/${folderId}/permissions/${userId}`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { folderId }) => [
+        { type: 'Media' as const, id: `FOLDER_PERMS_${folderId}` },
+      ],
+    }),
+
+    /** 移除用户访问权限 */
+    revokeFolderPermission: builder.mutation<{ code: number; message: string }, { folderId: number; userId: number }>({
+      query: ({ folderId, userId }) => ({
+        url: `/media/folders/${folderId}/permissions/${userId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, { folderId }) => [
+        { type: 'Media' as const, id: `FOLDER_PERMS_${folderId}` },
+        { type: 'Media' as const, id: 'FOLDERS' },
+      ],
+    }),
+
+    /** 设置文件夹公开/私有 */
+    setFolderPublic: builder.mutation<{ code: number; message: string }, { folderId: number; body: SetFolderPublicRequest }>({
+      query: ({ folderId, body }) => ({
+        url: `/media/folders/${folderId}/public`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (_result, _error, { folderId }) => [
+        { type: 'Media' as const, id: `FOLDER_PERMS_${folderId}` },
+        { type: 'Media' as const, id: 'FOLDERS' },
+      ],
+    }),
+
     /** 创建文件夹 */
     createMediaFolder: builder.mutation<{ code: number; data: FolderItem }, { name: string; parent_id?: number | null }>({
       query: (body) => ({
@@ -276,6 +340,12 @@ export const {
   useDeleteMediaMutation,
   useLazyDownloadMediaQuery,
   useListMediaFoldersQuery,
+  useListAccessibleFoldersQuery,
+  useListFolderPermissionsQuery,
+  useGrantFolderPermissionMutation,
+  useUpdateFolderPermissionMutation,
+  useRevokeFolderPermissionMutation,
+  useSetFolderPublicMutation,
   useCreateMediaFolderMutation,
   useUpdateMediaFolderMutation,
   useDeleteMediaFolderMutation,

@@ -80,7 +80,7 @@ const defaultCommands: CommandItem[] = [
     subtitle: 'AI 自动分析今日监控情况',
     icon: <Sparkles className="w-4 h-4" />,
     category: 'AI 助手',
-    action: () => console.log('生成报告'),
+    action: () => { /* TODO: 实现AI报告生成 */ },
     keywords: ['report', '报告', '总结', 'ai'],
   },
   {
@@ -89,7 +89,7 @@ const defaultCommands: CommandItem[] = [
     subtitle: '查看近期告警趋势分析',
     icon: <Sparkles className="w-4 h-4" />,
     category: 'AI 助手',
-    action: () => console.log('分析趋势'),
+    action: () => { /* TODO: 实现趋势分析 */ },
     keywords: ['analyze', '分析', '趋势', '统计'],
   },
   // 操作命令
@@ -99,7 +99,7 @@ const defaultCommands: CommandItem[] = [
     subtitle: '导出昨日告警数据',
     icon: <FileText className="w-4 h-4" />,
     category: '操作',
-    action: () => console.log('导出告警'),
+    action: () => { /* TODO: 实现告警导出 */ },
     keywords: ['export', '导出', '下载', '记录'],
   },
   {

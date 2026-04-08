@@ -7,10 +7,8 @@ import { MainLayout } from './components/layout/MainLayout';
 // 新设计系统页面
 const CommandCenter = lazy(() => import('./pages/CommandCenter'));
 const AlertInbox = lazy(() => import('./pages/AlertInbox'));
-const MediaLibrary = lazy(() => import('./pages/MediaLibrary'));
+const MediaLibrary = lazy(() => import('./routes/Media')); // 新版媒体中心：缺陷案例 + 图片库 + 资料目录
 const SystemSettings = lazy(() => import('./pages/SystemSettings'));
-
-// 保留原有页面
 const Login = lazy(() => import('./routes/Login'));
 
 // 路由元数据，供面包屑和导航使用

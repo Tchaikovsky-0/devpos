@@ -32,9 +32,52 @@ export interface FolderItem {
   tenant_id: string;
   name: string;
   parent_id: number | null;
-  user_id: number | null;
+  user_id: number;
+  is_private: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * 文件夹权限
+ */
+export interface FolderPermission {
+  id: number;
+  folder_id: number;
+  user_id: number;
+  permission: 'read' | 'write' | 'admin';
+  granted_by: number;
+  expires_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  // 关联的用户信息（预加载）
+  user?: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+/**
+ * 授权请求
+ */
+export interface GrantPermissionRequest {
+  user_id: number;
+  permission: 'read' | 'write' | 'admin';
+}
+
+/**
+ * 更新权限请求
+ */
+export interface UpdatePermissionRequest {
+  permission: 'read' | 'write' | 'admin';
+}
+
+/**
+ * 设置文件夹公开/私有请求
+ */
+export interface SetFolderPublicRequest {
+  is_public: boolean;
 }
 
 /**

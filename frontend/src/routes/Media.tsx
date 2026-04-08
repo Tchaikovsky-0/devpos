@@ -1037,13 +1037,13 @@ export default function Media() {
                             <img src={photo.imageFull} alt={photo.tag} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
                             <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-                              <span className="max-w-[60%] truncate rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-medium text-text-primary backdrop-blur">{photo.tag}</span>
+                              <span className="max-w-[60%] truncate rounded-full bg-bg-surface/70 px-2 py-0.5 text-[11px] font-medium text-text-primary backdrop-blur-sm">{photo.tag}</span>
                               <div className="flex items-center gap-2">
                                 {photo.starred && (
                                   <div className="rounded-full bg-warning-muted p-1.5 backdrop-blur"><Star className="h-3 w-3 fill-warning text-warning" /></div>
                                 )}
                                 {gallerySelectMode && (
-                                  <button type="button" className="rounded-full bg-black/45 p-1.5 text-text-primary backdrop-blur" onClick={() => galleryToggleSelect(photo.id)}>
+                                  <button type="button" className="rounded-full bg-bg-surface/70 p-1.5 text-text-primary backdrop-blur-sm" onClick={() => galleryToggleSelect(photo.id)}>
                                     {isSelected ? <CheckSquare className="h-4 w-4 text-accent" /> : <Square className="h-4 w-4" />}
                                   </button>
                                 )}

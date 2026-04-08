@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -174,6 +175,20 @@ func secureRandomString(nBytes int) string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// computeSHA256 computes the SHA256 hash of a file for deduplication.
+func computeSHA256(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +370,9 @@ func (s *MediaService) UploadFile(tenantID string, userID uint, file *multipart.
 
 	mediaType := getMediaType(detectedMIME)
 
+	// 8. Compute SHA256 hash for deduplication
+	sha256Hash, _ := computeSHA256(finalPath)
+
 	media := &model.Media{
 		Name:         sanitized,
 		TenantID:     tenantID,
@@ -368,15 +386,16 @@ func (s *MediaService) UploadFile(tenantID string, userID uint, file *multipart.
 		Type:         mediaType,
 		UserID:       &userID,
 		Description:  description,
+		Sha256Hash:   sha256Hash,
 	}
 
-	// 8. Database insert – cleanup file on failure
+	// 9. Database insert – cleanup file on failure
 	if err := s.db.Create(media).Error; err != nil {
 		os.Remove(finalPath)
 		return nil, fmt.Errorf("failed to save media record: %w", err)
 	}
 
-	// 9. Update tenant storage usage
+	// 10. Update tenant storage usage
 	if err := s.db.Model(&model.TenantConfig{}).
 		Where("tenant_id = ?", tenantID).
 		UpdateColumn("storage_used", gorm.Expr("storage_used + ?", written)).Error; err != nil {
@@ -640,6 +659,79 @@ func (s *MediaService) BatchDelete(tenantID string, ids []uint) error {
 	})
 }
 
+// DedupeResult represents the result of a batch deduplication operation.
+type DedupeResult struct {
+	Kept    int          `json:"kept"`
+	Removed int          `json:"removed"`
+	Groups  []DedupeGroup `json:"groups"`
+}
+
+// DedupeGroup represents a group of duplicate files.
+type DedupeGroup struct {
+	Hash       string   `json:"hash"`
+	KeptID    uint     `json:"kept_id"`
+	RemovedIDs []uint  `json:"removed_ids"`
+}
+
+// BatchDedupe finds and removes duplicate media files based on SHA256 hash.
+// For each group of duplicates, keeps the file with the smallest ID and
+// moves the rest to trash.
+func (s *MediaService) BatchDedupe(tenantID string, ids []uint) (*DedupeResult, error) {
+	if len(ids) > maxBatchSize {
+		return nil, ErrBatchLimitExceeded
+	}
+
+	// 1. Fetch media records with their hashes
+	var mediaList []model.Media
+	if err := s.db.Where("id IN ? AND tenant_id = ? AND trashed_at IS NULL AND sha256_hash != ''", ids, tenantID).
+		Order("id ASC").Find(&mediaList).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch media: %w", err)
+	}
+
+	// 2. Group by hash
+	hashGroups := make(map[string][]model.Media)
+	for _, m := range mediaList {
+		if m.Sha256Hash != "" {
+			hashGroups[m.Sha256Hash] = append(hashGroups[m.Sha256Hash], m)
+		}
+	}
+
+	result := &DedupeResult{Groups: make([]DedupeGroup, 0)}
+	duplicateIDs := make([]uint, 0)
+
+	for hash, items := range hashGroups {
+		if len(items) <= 1 {
+			continue // Not a duplicate
+		}
+		// Keep the first (smallest ID due to ORDER BY id ASC)
+		kept := items[0]
+		removed := items[1:]
+		for _, m := range removed {
+			duplicateIDs = append(duplicateIDs, m.ID)
+		}
+		result.Groups = append(result.Groups, DedupeGroup{
+			Hash:       hash,
+			KeptID:     kept.ID,
+			RemovedIDs: func() []uint { ids := make([]uint, len(removed)); for i, m := range removed { ids[i] = m.ID }; return ids }(),
+		})
+	}
+
+	result.Kept = len(mediaList) - len(duplicateIDs)
+	result.Removed = len(duplicateIDs)
+
+	// 3. Move duplicates to trash
+	if len(duplicateIDs) > 0 {
+		now := time.Now()
+		if err := s.db.Model(&model.Media{}).
+			Where("id IN ?", duplicateIDs).
+			Update("trashed_at", &now).Error; err != nil {
+			return nil, fmt.Errorf("failed to trash duplicates: %w", err)
+		}
+	}
+
+	return result, nil
+}
+
 // ---------------------------------------------------------------------------
 // Folder Management (Hardened)
 // ---------------------------------------------------------------------------
@@ -690,11 +782,22 @@ func (s *MediaService) CreateFolder(tenantID string, userID uint, req CreateMedi
 		TenantID: tenantID,
 		Name:     req.Name,
 		ParentID: req.ParentID,
-		UserID:   &userID,
+		UserID:   userID,
+		IsPrivate: true, // 默认私有
 	}
 	if err := s.db.Create(folder).Error; err != nil {
 		return nil, fmt.Errorf("failed to create folder: %w", err)
 	}
+
+	// 创建者自动获得 admin 权限
+	perm := &model.FolderPermission{
+		FolderID:   folder.ID,
+		UserID:     userID,
+		Permission: "admin",
+		GrantedBy:  userID,
+	}
+	s.db.Create(perm)
+
 	return folder, nil
 }
 
@@ -1363,4 +1466,209 @@ func getMediaType(mimeType string) string {
 		return "document"
 	}
 	return "other"
+}
+
+// ---------------------------------------------------------------------------
+// Folder Permission Management
+// ---------------------------------------------------------------------------
+
+// Permission levels: admin > write > read
+var permissionLevels = map[string]int{
+	"read":  1,
+	"write": 2,
+	"admin": 3,
+}
+
+func hasPermissionLevel(userPerm, requiredPerm string) bool {
+	userLevel := permissionLevels[userPerm]
+	requiredLevel := permissionLevels[requiredPerm]
+	return userLevel >= requiredLevel
+}
+
+// CanAccessFolder checks if a user can access a folder with the required permission level.
+func (s *MediaService) CanAccessFolder(tenantID string, userID uint, folderID uint, requiredPerm string) (bool, error) {
+	var folder model.MediaFolder
+	if err := s.db.Where("id = ? AND tenant_id = ?", folderID, tenantID).First(&folder).Error; err != nil {
+		return false, ErrNotFound
+	}
+
+	// 1. Creator always has admin permission
+	if folder.UserID == userID {
+		return true, nil
+	}
+
+	// 2. Public folder (IsPrivate=false) - anyone in tenant can read
+	if !folder.IsPrivate && requiredPerm == "read" {
+		return true, nil
+	}
+
+	// 3. Check permission table for private folders
+	perm, err := s.GetUserPermission(folderID, userID)
+	if err != nil || perm == nil {
+		return false, nil
+	}
+
+	return hasPermissionLevel(perm.Permission, requiredPerm), nil
+}
+
+// GetUserPermission gets a user's permission for a specific folder.
+func (s *MediaService) GetUserPermission(folderID, userID uint) (*model.FolderPermission, error) {
+	var perm model.FolderPermission
+	err := s.db.Where("folder_id = ? AND user_id = ?", folderID, userID).First(&perm).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	// Check expiration
+	if perm.ExpiresAt != nil && perm.ExpiresAt.Before(time.Now()) {
+		return nil, nil
+	}
+	return &perm, nil
+}
+
+// ListAccessibleFolders returns all root folders (parent_id IS NULL) the user can access.
+// This includes: folders they created, folders shared with them, and public folders.
+func (s *MediaService) ListAccessibleFolders(tenantID string, userID uint) ([]model.MediaFolder, error) {
+	var folders []model.MediaFolder
+
+	// Query: folders where user is creator OR folder is shared OR folder is public
+	query := `
+		SELECT DISTINCT mf.* FROM media_folders mf
+		LEFT JOIN folder_permissions fp ON mf.id = fp.folder_id AND fp.user_id = ?
+		WHERE mf.tenant_id = ?
+		AND mf.parent_id IS NULL
+		AND mf.deleted_at IS NULL
+		AND (mf.user_id = ? OR fp.id IS NOT NULL OR mf.is_private = FALSE)
+		ORDER BY mf.name ASC
+	`
+	if err := s.db.Raw(query, userID, tenantID, userID).Scan(&folders).Error; err != nil {
+		return nil, fmt.Errorf("failed to list accessible folders: %w", err)
+	}
+	return folders, nil
+}
+
+// ListAccessibleSubFolders returns all sub-folders the user can access under a specific parent.
+func (s *MediaService) ListAccessibleSubFolders(tenantID string, userID uint, parentID uint) ([]model.MediaFolder, error) {
+	var folders []model.MediaFolder
+
+	query := `
+		SELECT DISTINCT mf.* FROM media_folders mf
+		LEFT JOIN folder_permissions fp ON mf.id = fp.folder_id AND fp.user_id = ?
+		WHERE mf.tenant_id = ?
+		AND mf.parent_id = ?
+		AND mf.deleted_at IS NULL
+		AND (mf.user_id = ? OR fp.id IS NOT NULL OR mf.is_private = FALSE)
+		ORDER BY mf.name ASC
+	`
+	if err := s.db.Raw(query, userID, tenantID, parentID, userID).Scan(&folders).Error; err != nil {
+		return nil, fmt.Errorf("failed to list accessible sub-folders: %w", err)
+	}
+	return folders, nil
+}
+
+// ListFolderPermissions returns all permissions for a folder.
+func (s *MediaService) ListFolderPermissions(folderID uint) ([]model.FolderPermission, error) {
+	var perms []model.FolderPermission
+	if err := s.db.Preload("User").Where("folder_id = ?", folderID).Find(&perms).Error; err != nil {
+		return nil, fmt.Errorf("failed to list permissions: %w", err)
+	}
+	return perms, nil
+}
+
+// GrantFolderPermission grants a user access to a folder.
+func (s *MediaService) GrantFolderPermission(folderID, userID, grantedBy uint, permission string) (*model.FolderPermission, error) {
+	// Check if permission already exists
+	var existing model.FolderPermission
+	err := s.db.Where("folder_id = ? AND user_id = ?", folderID, userID).First(&existing).Error
+	if err == nil {
+		// Update existing permission
+		existing.Permission = permission
+		existing.GrantedBy = grantedBy
+		if err := s.db.Save(&existing).Error; err != nil {
+			return nil, fmt.Errorf("failed to update permission: %w", err)
+		}
+		return &existing, nil
+	}
+	if err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("failed to check existing permission: %w", err)
+	}
+
+	// Create new permission
+	perm := &model.FolderPermission{
+		FolderID:   folderID,
+		UserID:     userID,
+		Permission: permission,
+		GrantedBy:  grantedBy,
+	}
+	if err := s.db.Create(perm).Error; err != nil {
+		return nil, fmt.Errorf("failed to grant permission: %w", err)
+	}
+	return perm, nil
+}
+
+// RevokeFolderPermission removes a user's access to a folder.
+func (s *MediaService) RevokeFolderPermission(folderID, userID uint) error {
+	result := s.db.Where("folder_id = ? AND user_id = ?", folderID, userID).Delete(&model.FolderPermission{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to revoke permission: %w", result.Error)
+	}
+	return nil
+}
+
+// UpdateFolderPermission updates a user's permission level for a folder.
+func (s *MediaService) UpdateFolderPermission(folderID, userID uint, permission string) error {
+	result := s.db.Model(&model.FolderPermission{}).
+		Where("folder_id = ? AND user_id = ?", folderID, userID).
+		Update("permission", permission)
+	if result.Error != nil {
+		return fmt.Errorf("failed to update permission: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetFolderPublic sets whether a folder is public or private.
+func (s *MediaService) SetFolderPublic(tenantID, folderID string, isPublic bool) error {
+	result := s.db.Model(&model.MediaFolder{}).
+		Where("id = ? AND tenant_id = ?", folderID, tenantID).
+		Update("is_private", !isPublic)
+	if result.Error != nil {
+		return fmt.Errorf("failed to set folder public: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// GetFolderByID retrieves a folder by ID with tenant isolation.
+func (s *MediaService) GetFolderByID(tenantID, folderID string) (*model.MediaFolder, error) {
+	var folder model.MediaFolder
+	if err := s.db.Where("id = ? AND tenant_id = ?", folderID, tenantID).First(&folder).Error; err != nil {
+		return nil, ErrNotFound
+	}
+	return &folder, nil
+}
+
+// GetAccessibleChildren returns all child folders the user can access.
+func (s *MediaService) GetAccessibleChildren(tenantID string, userID uint, parentID uint) ([]model.MediaFolder, error) {
+	// If user has access to parent, they can see children if they have access to parent
+	// For simplicity, we check access for each child individually
+	var allChildren []model.MediaFolder
+	if err := s.db.Where("tenant_id = ? AND parent_id = ?", tenantID, parentID).Find(&allChildren).Error; err != nil {
+		return nil, err
+	}
+
+	var accessible []model.MediaFolder
+	for _, child := range allChildren {
+		canAccess, _ := s.CanAccessFolder(tenantID, userID, child.ID, "read")
+		if canAccess {
+			accessible = append(accessible, child)
+		}
+	}
+	return accessible, nil
 }

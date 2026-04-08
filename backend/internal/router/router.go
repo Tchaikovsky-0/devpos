@@ -137,6 +137,27 @@ func (r *Router) Setup() {
 	// ============================================================
 	v1 := r.engine.Group("/api/v1")
 	{
+		// 健康检查（API v1 版本，支持 nginx 代理）
+		v1.GET("/health", func(c *gin.Context) {
+			services := gin.H{}
+
+			// 检查 MySQL
+			if sqlDB, err := r.db.DB(); err == nil {
+				if err := sqlDB.Ping(); err == nil {
+					services["mysql"] = "ok"
+				} else {
+					services["mysql"] = "error"
+				}
+			} else {
+				services["mysql"] = "unavailable"
+			}
+
+			c.JSON(200, gin.H{
+				"status":   "ok",
+				"version":  "2.0.0",
+				"services": services,
+			})
+		})
 		// 公开路由
 		auth := v1.Group("/auth")
 		auth.Use(middleware.LoginRateLimit())
@@ -308,6 +329,12 @@ func (r *Router) Setup() {
 				mediaGroup.POST("/folders", mediaHandler.CreateFolder)
 				mediaGroup.PUT("/folders/:id", mediaHandler.UpdateFolder)
 				mediaGroup.DELETE("/folders/:id", mediaHandler.DeleteFolder)
+				mediaGroup.GET("/folders/my", mediaHandler.ListAccessibleFolders)
+				mediaGroup.GET("/folders/:id/permissions", mediaHandler.ListFolderPermissions)
+				mediaGroup.POST("/folders/:id/permissions", mediaHandler.GrantFolderPermission)
+				mediaGroup.PUT("/folders/:id/permissions/:userId", mediaHandler.UpdateFolderPermission)
+				mediaGroup.DELETE("/folders/:id/permissions/:userId", mediaHandler.RevokeFolderPermission)
+				mediaGroup.PUT("/folders/:id/public", mediaHandler.SetFolderPublic)
 				mediaGroup.GET("/storage-info", mediaHandler.StorageInfo)
 				mediaGroup.GET("/files/*filepath", mediaHandler.ServeFile)
 				// 收藏/回收站
@@ -318,6 +345,7 @@ func (r *Router) Setup() {
 				// 批量操作
 				mediaGroup.PUT("/batch/move", mediaHandler.BatchMove)
 				mediaGroup.DELETE("/batch", mediaHandler.BatchDelete)
+				mediaGroup.POST("/batch/dedupe", mediaHandler.BatchDedupe)
 				// 清理操作
 				mediaGroup.POST("/trash/clean-expired", mediaHandler.CleanExpiredTrash)
 				mediaGroup.GET("/orphan-files", mediaHandler.DetectOrphanFiles)

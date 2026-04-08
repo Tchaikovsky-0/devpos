@@ -24,6 +24,10 @@ FROM nginx:alpine
 # 复制构建产物
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# 修复静态资源权限（解决 macOS 构建时权限丢失问题）
+RUN find /usr/share/nginx/html -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" -o -name "*.ico" -o -name "*.svg" -o -name "*.webp" \) -exec chmod 644 {} \; \
+    && find /usr/share/nginx/html -type d -exec chmod 755 {} \;
+
 # 复制 nginx 配置（从构建上下文根目录的 deploy/ 中）
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 

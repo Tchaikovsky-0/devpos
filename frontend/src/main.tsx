@@ -11,12 +11,17 @@ import './index.css'
 if (typeof document !== 'undefined') {
   const validThemes = ['deep', 'dark', 'balanced', 'light'] as const
   const storedTheme = window.localStorage.getItem('xunjianbao-theme')
-  const theme =
+  let theme =
     storedTheme && validThemes.includes(storedTheme as (typeof validThemes)[number])
       ? storedTheme
       : window.matchMedia?.('(prefers-color-scheme: light)').matches
         ? 'light'
         : 'deep'
+  
+  if (theme === 'dark') {
+    theme = 'deep';
+  }
+  
   document.documentElement.setAttribute('data-theme', theme)
 }
 

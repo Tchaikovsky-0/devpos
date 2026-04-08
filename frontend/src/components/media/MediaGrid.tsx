@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 import GlassButton from '../ui/GlassButton';
 import { formatMediaDate, formatFileSize, getFileIcon } from './mediaHelpers';
 import type { MediaItem, FolderItem } from '../../types/api/media';
-import { FolderOpen, Video, Star, StarOff, Trash2, Download, Loader2, WifiOff, Upload } from 'lucide-react';
+import { FolderOpen, Video, Star, StarOff, Trash2, Download, Loader2, WifiOff, Upload, Settings } from 'lucide-react';
 
 /** 虚拟化阈值：文件数超过此值时启用 */
 const VIRTUALIZE_THRESHOLD = 100;
@@ -34,6 +34,7 @@ interface MediaGridProps {
   onDelete: (item: MediaItem) => void;
   onPageChange: (page: number) => void;
   onRefresh: () => void;
+  onOpenPermission?: (folder: FolderItem) => void;
 }
 
 const MediaGrid: React.FC<MediaGridProps> = ({
@@ -41,6 +42,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
   page, totalPages, totalFiles,
   onSelectItem, onNavigateToFolder, onDeleteFolder,
   onToggleStar, onDownload, onDelete, onPageChange, onRefresh,
+  onOpenPermission,
 }) => (
   <div className="flex-1 overflow-y-auto p-4">
     {/* Drag overlay */}
@@ -95,6 +97,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
           onToggleStar={onToggleStar}
           onDownload={onDownload}
           onDelete={onDelete}
+          onOpenPermission={onOpenPermission}
         />
       ) : (
         <GridView
@@ -107,6 +110,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
           onToggleStar={onToggleStar}
           onDownload={onDownload}
           onDelete={onDelete}
+          onOpenPermission={onOpenPermission}
         />
       )
     ) : (
@@ -121,6 +125,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
           onToggleStar={onToggleStar}
           onDownload={onDownload}
           onDelete={onDelete}
+          onOpenPermission={onOpenPermission}
         />
       ) : (
         <ListView
@@ -133,6 +138,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
           onToggleStar={onToggleStar}
           onDownload={onDownload}
           onDelete={onDelete}
+          onOpenPermission={onOpenPermission}
         />
       )
     )}
@@ -172,12 +178,13 @@ interface ViewProps {
   onToggleStar: (item: MediaItem) => void;
   onDownload: (item: MediaItem) => void;
   onDelete: (item: MediaItem) => void;
+  onOpenPermission?: (folder: FolderItem) => void;
 }
 
 const GridView: React.FC<ViewProps> = ({
   files, folders, selectedItem,
   onSelectItem, onNavigateToFolder, onDeleteFolder,
-  onToggleStar, onDownload, onDelete,
+  onToggleStar, onDownload, onDelete, onOpenPermission,
 }) => (
   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
     {folders.map(folder => (
@@ -205,6 +212,15 @@ const GridView: React.FC<ViewProps> = ({
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
+        {onOpenPermission && (
+          <button
+            className="absolute top-2 left-2 w-6 h-6 rounded flex items-center justify-center text-text-disabled opacity-0 group-hover:opacity-100 hover:text-accent hover:bg-accent-muted transition-all"
+            onClick={(e) => { e.stopPropagation(); onOpenPermission(folder); }}
+            title="权限设置"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+        )}
       </motion.div>
     ))}
 
@@ -239,21 +255,21 @@ const GridView: React.FC<ViewProps> = ({
         </div>
         <div className="absolute top-1.5 left-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            className="w-6 h-6 rounded bg-black/50 flex items-center justify-center text-white hover:bg-black/70"
+            className="w-6 h-6 rounded bg-bg-surface/80 flex items-center justify-center text-white hover:bg-bg-surface backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); onToggleStar(file); }}
             title={file.starred ? '取消收藏' : '收藏'}
           >
             {file.starred ? <StarOff className="w-3 h-3" /> : <Star className="w-3 h-3" />}
           </button>
           <button
-            className="w-6 h-6 rounded bg-black/50 flex items-center justify-center text-white hover:bg-black/70"
+            className="w-6 h-6 rounded bg-bg-surface/80 flex items-center justify-center text-white hover:bg-bg-surface backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); onDownload(file); }}
             title="下载"
           >
             <Download className="w-3 h-3" />
           </button>
           <button
-            className="w-6 h-6 rounded bg-black/50 flex items-center justify-center text-white hover:bg-red-600/80"
+            className="w-6 h-6 rounded bg-bg-surface/80 flex items-center justify-center text-white hover:bg-error/80 backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); onDelete(file); }}
             title="删除"
           >
@@ -268,7 +284,7 @@ const GridView: React.FC<ViewProps> = ({
 const ListView: React.FC<ViewProps> = ({
   files, folders, selectedItem,
   onSelectItem, onNavigateToFolder, onDeleteFolder,
-  onToggleStar, onDownload, onDelete,
+  onToggleStar, onDownload, onDelete, onOpenPermission,
 }) => (
   <div className="space-y-1">
     {folders.map(folder => (
@@ -280,9 +296,19 @@ const ListView: React.FC<ViewProps> = ({
         <FolderOpen className="w-5 h-5 text-yellow-500 shrink-0" />
         <span className="flex-1 text-sm text-text-primary truncate">{folder.name}</span>
         <span className="text-xs text-text-disabled">{formatMediaDate(folder.created_at)}</span>
+        {onOpenPermission && (
+          <button
+            className="w-7 h-7 rounded flex items-center justify-center text-text-disabled opacity-0 group-hover:opacity-100 hover:text-accent hover:bg-accent-muted transition-all"
+            onClick={(e) => { e.stopPropagation(); onOpenPermission(folder); }}
+            title="权限设置"
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
+        )}
         <button
           className="w-7 h-7 rounded flex items-center justify-center text-text-disabled opacity-0 group-hover:opacity-100 hover:text-error hover:bg-error-muted transition-all"
           onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder); }}
+          title="删除"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
@@ -388,13 +414,13 @@ function MediaGridCell({
           <p className="text-[10px] text-text-disabled mt-0.5">{formatFileSize(file.size)}</p>
         </div>
         <div className="absolute top-1.5 left-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="w-6 h-6 rounded bg-black/50 flex items-center justify-center text-white hover:bg-black/70" onClick={(e) => { e.stopPropagation(); onToggleStar(file); }} title={file.starred ? '取消收藏' : '收藏'}>
+          <button className="w-6 h-6 rounded bg-bg-surface/80 flex items-center justify-center text-white hover:bg-bg-surface backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); onToggleStar(file); }} title={file.starred ? '取消收藏' : '收藏'}>
             {file.starred ? <StarOff className="w-3 h-3" /> : <Star className="w-3 h-3" />}
           </button>
-          <button className="w-6 h-6 rounded bg-black/50 flex items-center justify-center text-white hover:bg-black/70" onClick={(e) => { e.stopPropagation(); onDownload(file); }} title="下载">
+          <button className="w-6 h-6 rounded bg-bg-surface/80 flex items-center justify-center text-white hover:bg-bg-surface backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); onDownload(file); }} title="下载">
             <Download className="w-3 h-3" />
           </button>
-          <button className="w-6 h-6 rounded bg-black/50 flex items-center justify-center text-white hover:bg-red-600/80" onClick={(e) => { e.stopPropagation(); onDelete(file); }} title="删除">
+          <button className="w-6 h-6 rounded bg-bg-surface/80 flex items-center justify-center text-white hover:bg-error/80 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); onDelete(file); }} title="删除">
             <Trash2 className="w-3 h-3" />
           </button>
         </div>
@@ -463,7 +489,7 @@ function MediaListRow({
 const VirtualizedGridView: React.FC<ViewProps> = ({
   files, folders, selectedItem,
   onSelectItem, onNavigateToFolder, onDeleteFolder,
-  onToggleStar, onDownload, onDelete,
+  onToggleStar, onDownload, onDelete, onOpenPermission,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dims, setDims] = useState({ width: 800, height: 600 });
@@ -512,6 +538,15 @@ const VirtualizedGridView: React.FC<ViewProps> = ({
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
+              {onOpenPermission && (
+                <button
+                  className="absolute top-2 left-2 w-6 h-6 rounded flex items-center justify-center text-text-disabled opacity-0 group-hover:opacity-100 hover:text-accent hover:bg-accent-muted transition-all"
+                  onClick={(e) => { e.stopPropagation(); onOpenPermission(folder); }}
+                  title="权限设置"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -547,7 +582,7 @@ const VirtualizedGridView: React.FC<ViewProps> = ({
 const VirtualizedListView: React.FC<ViewProps> = ({
   files, folders, selectedItem,
   onSelectItem, onNavigateToFolder, onDeleteFolder,
-  onToggleStar, onDownload, onDelete,
+  onToggleStar, onDownload, onDelete, onOpenPermission,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(600);
@@ -576,9 +611,19 @@ const VirtualizedListView: React.FC<ViewProps> = ({
           <FolderOpen className="w-5 h-5 text-yellow-500 shrink-0" />
           <span className="flex-1 text-sm text-text-primary truncate">{folder.name}</span>
           <span className="text-xs text-text-disabled">{formatMediaDate(folder.created_at)}</span>
+          {onOpenPermission && (
+            <button
+              className="w-7 h-7 rounded flex items-center justify-center text-text-disabled opacity-0 group-hover:opacity-100 hover:text-accent hover:bg-accent-muted transition-all"
+              onClick={(e) => { e.stopPropagation(); onOpenPermission(folder); }}
+              title="权限设置"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             className="w-7 h-7 rounded flex items-center justify-center text-text-disabled opacity-0 group-hover:opacity-100 hover:text-error hover:bg-error-muted transition-all"
             onClick={(e) => { e.stopPropagation(); onDeleteFolder(folder); }}
+            title="删除"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

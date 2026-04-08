@@ -32,8 +32,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   onSectionChange,
 }) => {
   return (
-    <aside className="w-64 border-r border-border bg-bg-secondary shrink-0">
-      <div className="p-4 border-b border-border">
+    <aside className="w-64 border-r border-border bg-bg-secondary shrink-0 h-full overflow-y-auto">
+      <div className="p-4 border-b border-border sticky top-0 bg-bg-secondary z-10">
         <h2 className="text-lg font-semibold text-text-primary">系统设置</h2>
       </div>
       <nav className="p-2 space-y-1">

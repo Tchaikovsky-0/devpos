@@ -192,7 +192,18 @@
         "usedAt": 1775579264921,
         "industryId": "02-Engineering"
       }
+    ],
+    "d2256aae09f941f7885040b9b06370cc": [
+      {
+        "expertId": "AndonQExpert",
+        "name": "AndonQ",
+        "profession": "腾讯云技术支持专家",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/AndonQExpert/AndonQExpert.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/AndonQExpert/AndonQExpert_zh.md",
+        "usedAt": 1775637440700,
+        "industryId": "02-Engineering"
+      }
     ]
   },
-  "lastUpdated": 1775579528237
+  "lastUpdated": 1775637447158
 }

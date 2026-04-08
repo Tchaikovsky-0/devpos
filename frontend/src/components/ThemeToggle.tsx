@@ -43,10 +43,14 @@ const getNextTheme = (current: Theme): Theme => {
 
 export function ThemeToggle(): JSX.Element {
   const [theme, setTheme] = useState<Theme>(() => detectPreferredTheme());
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    if (!isInitialized) {
+      applyTheme(theme);
+      setIsInitialized(true);
+    }
+  }, [theme, isInitialized]);
 
   const displayTheme = theme === 'dark' ? 'deep' : theme;
 

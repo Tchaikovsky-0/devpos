@@ -6,7 +6,7 @@ export const SystemSettings: React.FC = () => {
   const [activeSection, setActiveSection] = useState<SettingsSection>('personal');
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full overflow-hidden">
       <SettingsSidebar 
         activeSection={activeSection}
         onSectionChange={setActiveSection}

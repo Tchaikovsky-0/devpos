@@ -5,13 +5,14 @@ import {
   useListMediaFoldersQuery,
   useUploadMediaMutation,
 } from '../store/api/mediaApi';
-import type { MediaItem } from '../types/api/media';
+import type { MediaItem, FolderItem } from '../types/api/media';
 import type { BreadcrumbItem, UploadTask } from '../components/media/mediaTypes';
 import { useMediaActions } from '../hooks/useMediaActions';
 import MediaToolbar from '../components/media/MediaToolbar';
 import MediaGrid from '../components/media/MediaGrid';
 import MediaSideDetail from '../components/media/MediaSideDetail';
 import UploadManager from '../components/media/UploadManager';
+import PermissionPanel from '../components/media/PermissionPanel';
 
 /**
  * MediaLibrary - 媒体库页面容器（RTK Query 版）
@@ -47,6 +48,9 @@ const MediaLibrary: React.FC = () => {
   // ---- 新建文件夹 ----
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+
+  // ---- 文件夹权限面板 ----
+  const [permissionFolder, setPermissionFolder] = useState<FolderItem | null>(null);
 
   // ==========================================================================
   // RTK Query - 数据获取
@@ -114,6 +118,19 @@ const MediaLibrary: React.FC = () => {
     refetchFiles();
     refetchFolders();
   }, [refetchFiles, refetchFolders]);
+
+  // ---- 文件夹权限管理 ----
+  const handleOpenPermission = useCallback((folder: FolderItem): void => {
+    setPermissionFolder(folder);
+  }, []);
+
+  const handleClosePermission = useCallback((): void => {
+    setPermissionFolder(null);
+  }, []);
+
+  const handleFolderUpdated = useCallback((): void => {
+    refetchFolders();
+  }, [refetchFolders]);
 
   // ==========================================================================
   // 文件夹导航
@@ -291,6 +308,7 @@ const MediaLibrary: React.FC = () => {
           onDelete={handleDelete}
           onPageChange={setPage}
           onRefresh={handleRefresh}
+          onOpenPermission={handleOpenPermission}
         />
 
         <MediaSideDetail
@@ -302,6 +320,15 @@ const MediaLibrary: React.FC = () => {
           onDelete={handleDelete}
         />
       </div>
+
+      {/* 文件夹权限面板 */}
+      {permissionFolder && (
+        <PermissionPanel
+          folder={permissionFolder}
+          onClose={handleClosePermission}
+          onFolderUpdated={handleFolderUpdated}
+        />
+      )}
     </div>
   );
 };

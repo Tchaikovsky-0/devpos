@@ -9,6 +9,8 @@ import {
   Pencil,
   MoreHorizontal,
   HardDrive,
+  Lock,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FolderItem } from '@/types/api/media';
@@ -35,6 +37,8 @@ interface FolderTreeProps {
   onDrop?: (folderId: number) => void;
   /** Whether a drag operation is in progress */
   isDraggingFile?: boolean;
+  /** Open permission panel for folder */
+  onOpenPermission?: (folder: FolderItem) => void;
 }
 
 function buildTree(folders: FolderItem[]): TreeNode[] {
@@ -72,7 +76,8 @@ const FolderContextMenu: React.FC<{
   onRename: () => void;
   onDelete: () => void;
   onCreateSubfolder: () => void;
-}> = ({ x, y, onClose, onRename, onDelete, onCreateSubfolder }) => {
+  onOpenPermission?: () => void;
+}> = ({ x, y, onClose, onRename, onDelete, onCreateSubfolder, onOpenPermission }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,6 +110,15 @@ const FolderContextMenu: React.FC<{
         <Plus className="h-3.5 w-3.5" />
         <span>新建子文件夹</span>
       </button>
+      {onOpenPermission && (
+        <button
+          className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+          onClick={() => { onOpenPermission(); onClose(); }}
+        >
+          <Settings className="h-3.5 w-3.5" />
+          <span>权限管理</span>
+        </button>
+      )}
       <button
         className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
         onClick={() => { onRename(); onClose(); }}
@@ -141,6 +155,7 @@ interface FolderNodeProps {
   onDragEnter?: (folderId: number) => void;
   onDragLeave?: (folderId: number) => void;
   onDrop?: (folderId: number) => void;
+  onOpenPermission?: (folder: FolderItem) => void;
 }
 
 const FolderNode: React.FC<FolderNodeProps> = ({
@@ -156,6 +171,7 @@ const FolderNode: React.FC<FolderNodeProps> = ({
   onDragEnter,
   onDragLeave,
   onDrop,
+  onOpenPermission,
 }) => {
   const [expanded, setExpanded] = useState(depth === 0);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -259,6 +275,10 @@ const FolderNode: React.FC<FolderNodeProps> = ({
         ) : (
           <Folder className="h-4 w-4 shrink-0" />
         )}
+        {/* Lock icon for private folders */}
+        {node.folder.is_private && (
+          <Lock className="h-3 w-3 shrink-0 text-yellow-500 ml-0.5" />
+        )}
 
         {/* Folder name or rename input */}
         {isRenaming ? (
@@ -341,6 +361,7 @@ const FolderNode: React.FC<FolderNodeProps> = ({
           }}
           onDelete={() => onDeleteFolder(node.folder.id)}
           onCreateSubfolder={() => onCreateFolder(node.folder.id)}
+          onOpenPermission={onOpenPermission ? () => onOpenPermission(node.folder) : undefined}
         />
       )}
 
@@ -362,6 +383,7 @@ const FolderNode: React.FC<FolderNodeProps> = ({
               onDragEnter={onDragEnter}
               onDragLeave={onDragLeave}
               onDrop={onDrop}
+              onOpenPermission={onOpenPermission}
             />
           ))}
         </div>
@@ -386,6 +408,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
   onDragEnter,
   onDragLeave,
   onDrop,
+  onOpenPermission,
 }) => {
   const tree = useMemo(() => buildTree(folders), [folders]);
 
@@ -431,6 +454,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
+          onOpenPermission={onOpenPermission}
         />
       ))}
     </div>

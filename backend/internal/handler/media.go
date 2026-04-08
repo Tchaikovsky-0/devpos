@@ -267,7 +267,11 @@ func (h *MediaHandler) ServeFile(c *gin.Context) {
 	}
 
 	storagePath := h.mediaService.GetStoragePath()
-	fullPath := filepath.Join(storagePath, "media", filePath)
+
+	// filePath is like "/media/tenant_xxx/..." but storage already includes "media"
+	// so we need to strip the "/media" prefix before joining
+	cleanPath := strings.TrimPrefix(filePath, "/media/")
+	fullPath := filepath.Join(storagePath, "media", cleanPath)
 
 	// Verify the resolved path is still under the storage directory
 	absStorage, _ := filepath.Abs(filepath.Join(storagePath, "media"))
@@ -625,6 +629,32 @@ func (h *MediaHandler) BatchDelete(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
+// BatchDedupe removes duplicate media files based on SHA256 hash.
+func (h *MediaHandler) BatchDedupe(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var req struct {
+		IDs []uint `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if len(req.IDs) > maxBatchSize {
+		response.BadRequest(c, fmt.Sprintf("batch operation exceeds maximum of %d items", maxBatchSize))
+		return
+	}
+
+	result, err := h.mediaService.BatchDedupe(tenantID, req.IDs)
+	if err != nil {
+		response.InternalError(c, "dedupe failed")
+		return
+	}
+
+	response.Success(c, result)
+}
+
 // ---------------------------------------------------------------------------
 // Orphan Files
 // ---------------------------------------------------------------------------
@@ -738,6 +768,204 @@ func (h *MediaHandler) GenerateReport(c *gin.Context) {
 	}
 
 	response.Success(c, result)
+}
+
+// ---------------------------------------------------------------------------
+// Folder Permission Management
+// ---------------------------------------------------------------------------
+
+// ListAccessibleFolders returns root folders the current user can access.
+func (h *MediaHandler) ListAccessibleFolders(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+
+	folders, err := h.mediaService.ListAccessibleFolders(tenantID, userID)
+	if err != nil {
+		response.InternalError(c, "failed to list accessible folders")
+		return
+	}
+
+	response.Success(c, folders)
+}
+
+// ListFolderPermissions returns all permissions for a folder.
+func (h *MediaHandler) ListFolderPermissions(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+	folderID, err := service.ParseUint(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid folder id")
+		return
+	}
+
+	// Check access: must have at least read permission
+	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "read")
+	if !canAccess {
+		response.Forbidden(c, "no access to this folder")
+		return
+	}
+
+	perms, err := h.mediaService.ListFolderPermissions(folderID)
+	if err != nil {
+		response.InternalError(c, "failed to list permissions")
+		return
+	}
+
+	response.Success(c, perms)
+}
+
+// GrantFolderPermission grants a user access to a folder.
+func (h *MediaHandler) GrantFolderPermission(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+	folderID, err := service.ParseUint(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid folder id")
+		return
+	}
+
+	// Check access: must have admin permission to grant
+	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "admin")
+	if !canAccess {
+		response.Forbidden(c, "no permission to manage this folder")
+		return
+	}
+
+	var req struct {
+		UserID     uint   `json:"user_id" binding:"required"`
+		Permission string `json:"permission" binding:"required,oneof=read write admin"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	perm, err := h.mediaService.GrantFolderPermission(folderID, req.UserID, userID, req.Permission)
+	if err != nil {
+		response.InternalError(c, "failed to grant permission")
+		return
+	}
+
+	response.Success(c, perm)
+}
+
+// RevokeFolderPermission removes a user's access to a folder.
+func (h *MediaHandler) RevokeFolderPermission(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+	folderID, err := service.ParseUint(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid folder id")
+		return
+	}
+
+	targetUserID, err := service.ParseUint(c.Param("userId"))
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	// Check access: must have admin permission
+	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "admin")
+	if !canAccess {
+		response.Forbidden(c, "no permission to manage this folder")
+		return
+	}
+
+	// Cannot revoke own admin permission
+	if targetUserID == userID {
+		response.BadRequest(c, "cannot revoke your own permission")
+		return
+	}
+
+	if err := h.mediaService.RevokeFolderPermission(folderID, targetUserID); err != nil {
+		response.InternalError(c, "failed to revoke permission")
+		return
+	}
+
+	response.Success(c, gin.H{"message": "permission revoked"})
+}
+
+// UpdateFolderPermission updates a user's permission level for a folder.
+func (h *MediaHandler) UpdateFolderPermission(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+	folderID, err := service.ParseUint(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "invalid folder id")
+		return
+	}
+
+	targetUserID, err := service.ParseUint(c.Param("userId"))
+	if err != nil {
+		response.BadRequest(c, "invalid user id")
+		return
+	}
+
+	// Check access: must have admin permission
+	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "admin")
+	if !canAccess {
+		response.Forbidden(c, "no permission to manage this folder")
+		return
+	}
+
+	var req struct {
+		Permission string `json:"permission" binding:"required,oneof=read write admin"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.mediaService.UpdateFolderPermission(folderID, targetUserID, req.Permission); err != nil {
+		if err == service.ErrNotFound {
+			response.NotFound(c, "permission not found")
+			return
+		}
+		response.InternalError(c, "failed to update permission")
+		return
+	}
+
+	response.Success(c, gin.H{"message": "permission updated"})
+}
+
+// SetFolderPublic sets whether a folder is public or private.
+func (h *MediaHandler) SetFolderPublic(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetUint("user_id")
+	folderID := c.Param("id")
+
+	// Check access: must have admin permission
+	folderIDUint, err := service.ParseUint(folderID)
+	if err != nil {
+		response.BadRequest(c, "invalid folder id")
+		return
+	}
+
+	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderIDUint, "admin")
+	if !canAccess {
+		response.Forbidden(c, "no permission to manage this folder")
+		return
+	}
+
+	var req struct {
+		IsPublic bool `json:"is_public"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.mediaService.SetFolderPublic(tenantID, folderID, req.IsPublic); err != nil {
+		if err == service.ErrNotFound {
+			response.NotFound(c, "folder not found")
+			return
+		}
+		response.InternalError(c, "failed to update folder")
+		return
+	}
+
+	response.Success(c, gin.H{"message": "folder visibility updated"})
 }
 
 // ---------------------------------------------------------------------------
