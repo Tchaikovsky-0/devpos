@@ -150,7 +150,7 @@ const CommandCenter: React.FC = () => {
   }, []);
 
   // 处理全屏
-  const handleFullscreen = useCallback((streamId: string) => {
+  const handleFullscreen = useCallback((_streamId: string) => {
     // TODO: 实现全屏功能
   }, []);
 
