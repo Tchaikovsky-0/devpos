@@ -302,6 +302,12 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: ['Media', 'MediaStatistics'],
     }),
 
+    /** 批量去重 */
+    batchDedupe: builder.mutation<{ code: number; data: { kept: number; removed: number; groups: { hash: string; kept_id: number; removed_ids: number[] }[] } }, { ids: number[] }>({
+      query: (body) => ({ url: '/media/batch/dedupe', method: 'POST', body }),
+      invalidatesTags: ['Media', 'MediaStatistics'],
+    }),
+
     /** AI 媒体分析 */
     analyzeMedia: builder.mutation<{ code: number; data: unknown }, { media_ids: number[]; analysis_type?: string }>({
       query: (body) => ({ url: '/media/analyze', method: 'POST', body }),
@@ -356,6 +362,7 @@ export const {
   usePermanentDeleteTrashMutation,
   useBatchMoveMutation,
   useBatchDeleteMutation,
+  useBatchDedupeMutation,
   useAnalyzeMediaMutation,
   useDefectAnalyzeMediaMutation,
   useGenerateReportMutation,

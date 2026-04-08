@@ -70,6 +70,7 @@ import {
   useMoveToTrashMutation,
   useRestoreFromTrashMutation,
   usePermanentDeleteTrashMutation,
+  useBatchDedupeMutation,
   MediaItem,
 } from '@/store/api/mediaApi';
 
@@ -144,6 +145,7 @@ export default function Media() {
   const [moveToTrashApi] = useMoveToTrashMutation();
   const [restoreTrashApi] = useRestoreFromTrashMutation();
   const [permanentDeleteApi] = usePermanentDeleteTrashMutation();
+  const [batchDedupeApi] = useBatchDedupeMutation();
 
   interface GalleryPhoto {
     id: number; imageFull: string; tag: string; date: string; time: string; starred: boolean;
@@ -270,6 +272,21 @@ export default function Media() {
         .catch(() => toast({ title: '操作失败，请重试', variant: 'destructive' }));
     },
     [permanentDeleteApi],
+  );
+
+  const galleryHandleDedupe = useCallback(
+    (ids: number[]) => {
+      if (!ids.length) return;
+      batchDedupeApi({ ids })
+        .unwrap()
+        .then((result) => {
+          const data = result.data;
+          toast({ title: `去重完成：保留 ${data.kept} 张，删除 ${data.removed} 张` });
+          setGallerySelected(new Set());
+        })
+        .catch(() => toast({ title: '操作失败，请重试', variant: 'destructive' }));
+    },
+    [batchDedupeApi],
   );
 
   const galleryHandleDownload = useCallback(
@@ -1140,6 +1157,7 @@ export default function Media() {
                       <>
                         <Button variant="secondary" size="sm" onClick={() => setGalleryAnalysisOpen(true)}><Sparkles className="h-3.5 w-3.5" />AI 分析</Button>
                         <Button size="sm" onClick={() => setGalleryReportOpen(true)}><ScrollText className="h-3.5 w-3.5" />生成报告</Button>
+                        <Button variant="secondary" size="sm" onClick={() => galleryHandleDedupe([...gallerySelected])}><Sparkles className="h-3.5 w-3.5" />一键去重</Button>
                         <Button variant="outline" size="sm" onClick={() => galleryHandleMoveToTrash([...gallerySelected])}><Trash2 className="h-3.5 w-3.5" />移入回收站</Button>
                       </>
                     )}
