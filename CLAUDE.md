@@ -14,9 +14,40 @@
 
 ---
 
+## 前端架构规范（最高优先级）
+
+### 唯一前端系统
+
+- **项目唯一前端**: `frontend/` 目录下的 Admin 管理系统
+- **技术栈**: React 18 + TypeScript + Ant Design 6 + Tailwind CSS + Vite + pnpm
+- **禁止创建任何其他前端项目、HTML页面、独立Web应用**
+- **所有前端开发必须基于现有 Admin 系统进行**
+
+### Admin 系统八个模块（禁止删除/修改模块数量）
+
+| 序号 | 模块名称 | 文件路径 | 功能 |
+|------|---------|---------|------|
+| 1 | 监控大屏 | `frontend/src/routes/Center.tsx` | 实时视频监控与态势感知 |
+| 2 | 视频流监控 | `frontend/src/routes/Monitor.tsx` | 视频流管理与YOLO检测 |
+| 3 | 媒体库 | `frontend/src/routes/Media.tsx` | 文件存储、标注与取证 |
+| 4 | 图片库 | `frontend/src/routes/Gallery/index.tsx` | 图片浏览与管理 |
+| 5 | 告警处置 | `frontend/src/routes/AlertsWorkspace.tsx` | 告警分析与处置 |
+| 6 | 设备资产 | `frontend/src/routes/AssetsWorkspace.tsx` | 设备管理与诊断 |
+| 7 | 任务协同 | `frontend/src/routes/TasksWorkspace.tsx` | 任务管理与执行 |
+| 8 | 系统设置 | `frontend/src/routes/SystemWorkspace.tsx` | 系统配置与管理 |
+
+### 前端清理规则
+
+- **禁止保留**: 独立HTML页面、测试页面、旧构建产物(frontend-dist-*)
+- **禁止创建**: 新的前端项目目录、独立Web应用、Vue/Angular项目
+- **必须删除**: macOS元数据文件(._*)、测试缓存、旧备份文件
+- **必须保留**: Admin系统源码、workspace组件、构建配置
+
+---
+
 ## 技术架构
 
-- 前端：React 18 + TypeScript + Tailwind CSS + Shadcn UI + Vite + pnpm（禁止 npm/yarn）
+- 前端：React 18 + TypeScript + Tailwind CSS + Shadcn UI + Ant Design + Vite + pnpm（禁止 npm/yarn）
 - 后端：Go 1.21+ + Gin + PostgreSQL 14+ + Redis 6+ + GORM + JWT
 - AI服务：Python 3.10+ + FastAPI + YOLOv8 + OpenCV + OpenClaw
 

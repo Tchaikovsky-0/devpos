@@ -4,6 +4,10 @@ import {
   Radar,
   ShieldCheck,
   Siren,
+  Bot,
+  ClipboardList,
+  HardDrive,
+  Image,
 } from 'lucide-react';
 
 export interface NavigationModule {
@@ -19,57 +23,20 @@ export const navigationModules: NavigationModule[] = [
   {
     id: 'center',
     label: '监控大屏',
-    description: '',
+    description: '实时视频监控与态势感知',
     path: '/center',
-    aliases: ['/'],
+    aliases: ['/dashboard', '/'],
     icon: Radar,
   },
   {
     id: 'media',
     label: '媒体库',
-    description: '',
+    description: '文件存储、标注与取证',
     path: '/media',
-    aliases: ['/media-library', '/reports', '/gallery', '/tasks', '/assets'],
+    aliases: ['/media-library'],
     icon: FolderKanban,
   },
   {
-    id: 'alerts',
-    label: '告警处置',
-    description: '',
-    path: '/alerts',
-    icon: Siren,
-  },
-  {
-    id: 'system',
-    label: '系统管理',
-    description: '',
-    path: '/system',
-    aliases: ['/settings', '/admin'],
-    icon: ShieldCheck,
-  },
-];
-
-function normalizePath(pathname: string) {
-  if (!pathname) {
-    return '/center';
-  }
-
-  if (pathname === '/') {
-    return '/';
-  }
-
-  return pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-}
-
-export function findModuleForPath(pathname: string): NavigationModule {
-  const normalizedPath = normalizePath(pathname);
-
-  return (
-    navigationModules.find((module) => {
-      const paths = [module.path, ...(module.aliases ?? [])];
-      return paths.some((path) =>
-        normalizedPath === path || normalizedPath.startsWith(`${path}/`),
-      );
-    }) ?? navigationModules[0]
-  );
-}
+    id: 'gallery',
+    label: '图片库',
+    description: '图片

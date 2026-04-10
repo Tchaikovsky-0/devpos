@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { Navigate, createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ToastProvider } from './components/ui/toast';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { MainLayout } from './components/layout/MainLayout';
+import { Layout } from './components/Layout';
 
 // 新设计系统页面
 const CommandCenter = lazy(() => import('./pages/CommandCenter'));
@@ -41,7 +41,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <MainLayout />,
+    element: <Layout />,
     children: [
       {
         path: '',
