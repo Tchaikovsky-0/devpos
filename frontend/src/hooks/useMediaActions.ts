@@ -8,7 +8,8 @@ import {
 import type { MediaItem, FolderItem } from '../types/api/media';
 import { toast } from '@/components/ui/use-toast';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8094') + '/api/v1';
+const rawBase = import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:8094';
+const API_BASE_URL = (rawBase.startsWith('http') ? rawBase : '') + '/api/v1';
 
 interface UseMediaActionsOptions {
   selectedItem: MediaItem | null;
