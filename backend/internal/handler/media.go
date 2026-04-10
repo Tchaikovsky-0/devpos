@@ -240,10 +240,20 @@ func (h *MediaHandler) ServeFile(c *gin.Context) {
 
 	storagePath := h.mediaService.GetStoragePath()
 
-	cleanPath := strings.TrimPrefix(filePath, "/media/")
-	fullPath := filepath.Join(storagePath, "media", tenantID, cleanPath)
+	// filepath is like "/media/tenant_demo/2026-04/xxx.png"
+	// Remove leading slash for filepath.Join
+	cleanPath := strings.TrimPrefix(filePath, "/")
 
-	absStorage, _ := filepath.Abs(filepath.Join(storagePath, "media"))
+	// Ensure the path starts with "media/tenantID" for security
+	expectedPrefix := "media/" + tenantID
+	if !strings.HasPrefix(cleanPath, expectedPrefix) {
+		response.Forbidden(c, "access denied to this tenant's files")
+		return
+	}
+
+	fullPath := filepath.Join(storagePath, cleanPath)
+
+	absStorage, _ := filepath.Abs(storagePath)
 	absFile, _ := filepath.Abs(fullPath)
 	if !strings.HasPrefix(absFile, absStorage) {
 		response.Forbidden(c, "invalid file path")

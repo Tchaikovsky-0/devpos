@@ -3,20 +3,20 @@ import { useSearchParams } from 'react-router-dom';
 import {
   useListMediaQuery,
   useListTrashQuery,
-  useUploadMediaMutation,
   useSemanticDedupeMutation,
   useListMediaFoldersQuery,
 } from '../store/api/mediaApi';
 import { useMediaActions } from '../hooks/useMediaActions';
+import { useMediaUpload } from '../hooks/useMediaUpload';
 import MediaToolbar from '../components/media/MediaToolbar';
 import MediaGrid from '../components/media/MediaGrid';
 import MediaSideDetail from '../components/media/MediaSideDetail';
 import UploadManager from '../components/media/UploadManager';
 import { SemanticDedupeDialog } from '../components/media/SemanticDedupeDialog';
-import { Button } from '@/components/ui/Button';
+import { toast } from '@/components/ui/use-toast';
 import { Trash2, X } from 'lucide-react';
 import type { MediaItem, FolderItem } from '../types/api/media';
-import type { UploadTask, BreadcrumbItem } from '../components/media/mediaTypes';
+import type { BreadcrumbItem } from '../components/media/mediaTypes';
 
 const MediaLibrary: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,15 +33,11 @@ const MediaLibrary: React.FC = () => {
   const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '根目录' }]);
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [uploads, setUploads] = useState<UploadTask[]>([]);
   const [showTrash, setShowTrash] = useState(false);
   const [showSemanticDedupe, setShowSemanticDedupe] = useState(false);
   const [selectedForDedupe, setSelectedForDedupe] = useState<number[]>([]);
-
-  const hasActiveUploads = uploads.some(u => u.progress === 'uploading' || u.progress === 'pending');
-  const uploadQueueRef = useRef<UploadTask[]>([]);
-  const isProcessingRef = useRef(false);
-  const MAX_CONCURRENT = 3;
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounterRef = useRef(0);
 
   const { data: mediaData, isLoading: mediaLoading } = useListMediaQuery({
     page,
@@ -62,7 +58,6 @@ const MediaLibrary: React.FC = () => {
     parent_id: currentFolderId !== null ? currentFolderId : null,
   });
 
-  const [uploadMedia] = useUploadMediaMutation();
   const [semanticDedupe] = useSemanticDedupeMutation();
 
   const {
@@ -78,6 +73,21 @@ const MediaLibrary: React.FC = () => {
     currentFolderId,
   });
 
+  const {
+    uploads,
+    hasActiveUploads,
+    handleFiles,
+    handleRetry,
+    handleCancel,
+    handleClearFinished,
+    handleCancelAll,
+  } = useMediaUpload({
+    maxConcurrent: 3,
+    onUploadComplete: () => {
+      toast({ title: '上传完成', description: '所有文件上传任务已完成' });
+    },
+  });
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -86,59 +96,55 @@ const MediaLibrary: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const processUploadQueue = useCallback(async () => {
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
-    while (uploadQueueRef.current.length > 0) {
-      const batch = uploadQueueRef.current.splice(0, MAX_CONCURRENT);
-      const promises = batch.map(async (task) => {
-        setUploads(prev => prev.map(u => u.id === task.id ? { ...u, progress: 'uploading' as const, progressPercent: 0 } : u));
-        try {
-          const formData = new FormData();
-          formData.append('file', task.file);
-          if (task.folderId !== null) {
-            formData.append('folder_id', String(task.folderId));
-          }
-          await uploadMedia(formData).unwrap();
-          setUploads(prev => prev.map(u => u.id === task.id ? { ...u, progress: 'done' as const, progressPercent: 100 } : u));
-        } catch (err) {
-          setUploads(prev => prev.map(u => u.id === task.id ? {
-            ...u,
-            progress: 'error' as const,
-            errorMsg: err instanceof Error ? err.message : '上传失败',
-          } : u));
-        }
-      });
-      await Promise.all(promises);
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
     }
-
-    isProcessingRef.current = false;
-  }, [uploadMedia]);
-
-  const handleFiles = useCallback((files: FileList | File[]) => {
-    const fileArray = Array.from(files);
-    const newTasks: UploadTask[] = fileArray.map(file => ({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      file,
-      progress: 'pending',
-      progressPercent: 0,
-      folderId: currentFolderId,
-    }));
-    setUploads(prev => [...prev, ...newTasks]);
-    uploadQueueRef.current.push(...newTasks);
-    processUploadQueue();
-  }, [currentFolderId, processUploadQueue]);
-
-  const handleRetryUpload = useCallback((task: UploadTask) => {
-    setUploads(prev => prev.map(u => u.id === task.id ? { ...u, progress: 'pending' as const, errorMsg: undefined } : u));
-    uploadQueueRef.current.push(task);
-    processUploadQueue();
-  }, [processUploadQueue]);
-
-  const handleClearFinished = useCallback(() => {
-    setUploads(prev => prev.filter(u => u.progress === 'uploading' || u.progress === 'pending'));
   }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const validFiles = Array.from(files).filter(f => {
+        const allowedTypes = ['image/', 'video/', 'application/pdf', 'application/vnd.'];
+        const isAllowed = allowedTypes.some(type => f.type.startsWith(type));
+        if (!isAllowed) {
+          toast({
+            title: '不支持的文件类型',
+            description: `${f.name} 类型不被支持`,
+            variant: 'destructive',
+          });
+        }
+        return isAllowed;
+      });
+
+      if (validFiles.length > 0) {
+        handleFiles(validFiles, currentFolderId);
+      }
+    }
+  }, [handleFiles, currentFolderId]);
 
   const handleNavigateBreadcrumb = useCallback((index: number) => {
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
@@ -155,7 +161,7 @@ const MediaLibrary: React.FC = () => {
     } else {
       const allIds = (mediaData?.data?.items || []).map((item: MediaItem) => item.id);
       if (allIds.length < 2) {
-        alert('当前文件夹文件不足 2 个，无法去重');
+        toast({ title: '文件不足', description: '当前文件夹文件不足 2 个，无法去重' });
         return;
       }
       setSelectedForDedupe(allIds);
@@ -168,8 +174,13 @@ const MediaLibrary: React.FC = () => {
       await semanticDedupe({ ids }).unwrap();
       setShowSemanticDedupe(false);
       setSelectedForDedupe([]);
+      toast({ title: '去重完成', description: '语义去重任务已完成' });
     } catch (err) {
-      console.error('语义去重失败:', err);
+      toast({
+        title: '去重失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
     }
   }, [semanticDedupe]);
 
@@ -185,7 +196,13 @@ const MediaLibrary: React.FC = () => {
   const currentLoading = showTrash ? trashLoading : mediaLoading;
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       {alertId && alertTimestamp && alertStreamId && (
         <div className="mx-4 mt-2 border border-accent/20 bg-accent/5 rounded-lg p-3 flex items-center justify-between">
           <span className="text-sm text-text-secondary">
@@ -193,17 +210,22 @@ const MediaLibrary: React.FC = () => {
             {alertStreamId && `（流: ${alertStreamId}）`}
             {alertTimestamp && ` · ${new Date(Number(alertTimestamp)).toLocaleString()}`}
           </span>
-          <Button variant="ghost" size="sm" onClick={() => setSearchParams({})}>
+          <button
+            className="text-text-secondary hover:text-text-primary transition-colors"
+            onClick={() => setSearchParams({})}
+          >
             <X className="w-4 h-4" />
-          </Button>
+          </button>
         </div>
       )}
 
       <UploadManager
         uploads={uploads}
         hasActiveUploads={hasActiveUploads}
-        onRetry={handleRetryUpload}
+        onRetry={handleRetry}
+        onCancel={handleCancel}
         onClearFinished={handleClearFinished}
+        onCancelAll={handleCancelAll}
       />
 
       <MediaToolbar
@@ -243,7 +265,7 @@ const MediaLibrary: React.FC = () => {
               loading={false}
               error={null}
               selectedItem={selectedItem}
-              isDragging={false}
+              isDragging={isDragging}
               page={page}
               totalPages={Math.ceil((currentData?.data?.total || 0) / pageSize)}
               totalFiles={currentData?.data?.total || 0}

@@ -40,6 +40,7 @@ func (r *Router) Setup() {
 	mediaService := service.NewMediaService(r.db, aiService)
 	defectCaseService := service.NewDefectCaseService(r.db)
 	openclawService := service.NewOpenClawService(r.db, nil)
+	annotationService := service.NewAnnotationService(r.db)
 
 	// ============================================================
 	// Handler 层初始化
@@ -57,6 +58,7 @@ func (r *Router) Setup() {
 	mediaHandler := handler.NewMediaHandler(mediaService)
 	defectCaseHandler := handler.NewDefectCaseHandler(defectCaseService)
 	openclawHandler := handler.NewOpenClawHandler(openclawService)
+	annotationHandler := handler.NewAnnotationHandler(annotationService)
 
 	// ============================================================
 	// 中间件
@@ -293,6 +295,18 @@ func (r *Router) Setup() {
 
 				// Detection
 				openclaw.GET("/detection/overview", openclawHandler.GetDetectionOverview)
+			}
+
+			// Annotations (manual labeling)
+			annotations := protected.Group("/annotations")
+			{
+				annotations.GET("", annotationHandler.ListAnnotations)
+				annotations.GET("/stats", annotationHandler.GetAnnotationStats)
+				annotations.GET("/user", annotationHandler.GetUserAnnotations)
+				annotations.GET("/:id", annotationHandler.GetAnnotation)
+				annotations.POST("", annotationHandler.CreateAnnotation)
+				annotations.PUT("/:id", annotationHandler.UpdateAnnotation)
+				annotations.DELETE("/:id", annotationHandler.DeleteAnnotation)
 			}
 		}
 	}

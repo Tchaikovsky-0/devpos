@@ -548,7 +548,7 @@ func (s *OpenClawService) HandleChat(ctx context.Context, req *OpenClawChatReque
 		return nil, fmt.Errorf("marshal: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", s.aiServiceURL+"/api/v1/chat", bytes.NewReader(data))
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", s.aiServiceURL+"/api/v1/ai/chat", bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}

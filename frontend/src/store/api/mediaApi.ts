@@ -358,6 +358,40 @@ export const mediaApi = baseApi.injectEndpoints({
     }>({
       query: (body) => ({ url: '/defect-cases/evidences', method: 'POST', body }),
     }),
+
+    // =========================================================================
+    // Annotation (manual labeling) endpoints
+    // =========================================================================
+
+    /** 获取媒体的标注列表 */
+    listAnnotations: builder.query<{ code: number; data: AnnotationResponse[] }, number>({
+      query: (mediaId) => `/annotations?media_id=${mediaId}`,
+      providesTags: (_result, _error, mediaId) => [{ type: 'Annotation' as const, id: mediaId }],
+    }),
+
+    /** 创建标注 */
+    createAnnotation: builder.mutation<{ code: number; data: AnnotationResponse }, CreateAnnotationRequest>({
+      query: (body) => ({ url: '/annotations', method: 'POST', body }),
+      invalidatesTags: (_result, _error, { media_id }) => [{ type: 'Annotation', id: media_id }],
+    }),
+
+    /** 更新标注 */
+    updateAnnotation: builder.mutation<{ code: number; data: AnnotationResponse }, { id: number; body: UpdateAnnotationRequest }>({
+      query: ({ id, body }) => ({ url: `/annotations/${id}`, method: 'PUT', body }),
+      invalidatesTags: () => [{ type: 'Annotation', id: 'LIST' }],
+    }),
+
+    /** 删除标注 */
+    deleteAnnotation: builder.mutation<{ code: number; message: string }, { id: number; mediaId: number }>({
+      query: ({ id }) => ({ url: `/annotations/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_result, _error, { mediaId }) => [{ type: 'Annotation', id: mediaId }],
+    }),
+
+    /** 获取标注统计 */
+    getAnnotationStats: builder.query<{ code: number; data: AnnotationStatsResponse }, void>({
+      query: () => '/annotations/stats',
+      providesTags: ['AnnotationStats'],
+    }),
   }),
 });
 
@@ -393,4 +427,49 @@ export const {
   useDefectAnalyzeMediaMutation,
   useGenerateReportMutation,
   useSaveDefectEvidenceMutation,
+  useListAnnotationsQuery,
+  useCreateAnnotationMutation,
+  useUpdateAnnotationMutation,
+  useDeleteAnnotationMutation,
+  useGetAnnotationStatsQuery,
 } = mediaApi;
+
+// =========================================================================
+// Annotation Types
+// =========================================================================
+
+export interface AnnotationResponse {
+  id: number;
+  media_id: number;
+  user_id: number;
+  tenant_id: string;
+  annotation_type: 'tag' | 'region' | 'note';
+  content: string;
+  bbox: string | null;
+  tags: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAnnotationRequest {
+  media_id: number;
+  annotation_type: 'tag' | 'region' | 'note';
+  content?: string;
+  bbox?: string;
+  tags?: string[];
+  notes?: string;
+}
+
+export interface UpdateAnnotationRequest {
+  content?: string;
+  bbox?: string;
+  tags?: string[];
+  notes?: string;
+  annotation_type?: string;
+}
+
+export interface AnnotationStatsResponse {
+  total: number;
+  by_type: Array<{ annotation_type: string; count: number }>;
+}

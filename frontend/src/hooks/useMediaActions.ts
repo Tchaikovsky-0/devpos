@@ -1,11 +1,14 @@
 import { useState, useCallback } from 'react';
 import {
-  useDeleteMediaMutation,
   useToggleStarMutation,
   useCreateMediaFolderMutation,
   useDeleteMediaFolderMutation,
+  useMoveToTrashMutation,
 } from '../store/api/mediaApi';
 import type { MediaItem, FolderItem } from '../types/api/media';
+import { toast } from '@/components/ui/use-toast';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8094') + '/api/v1';
 
 interface UseMediaActionsOptions {
   selectedItem: MediaItem | null;
@@ -18,64 +21,87 @@ interface UseMediaActionsReturn {
   creatingFolder: boolean;
   handleDelete: (item: MediaItem) => Promise<void>;
   handleToggleStar: (item: MediaItem) => Promise<void>;
-  handleDownload: (item: MediaItem) => void;
+  handleDownload: (item: MediaItem) => Promise<void>;
   handleCreateFolder: (name: string) => Promise<void>;
   handleDeleteFolder: (folder: FolderItem) => Promise<void>;
 }
 
-/**
- * 媒体操作 Hook（RTK Query 版）
- * 收藏/删除/下载/创建文件夹/删除文件夹
- * RTK Query 的 invalidatesTags 自动刷新列表，无需手动更新本地状态
- */
 export function useMediaActions(options: UseMediaActionsOptions): UseMediaActionsReturn {
   const { selectedItem, onSelectItem, currentFolderId } = options;
 
   const [actionLoading, setActionLoading] = useState<Record<number, boolean>>({});
 
-  const [deleteMedia] = useDeleteMediaMutation();
   const [toggleStar] = useToggleStarMutation();
   const [createFolder, { isLoading: creatingFolder }] = useCreateMediaFolderMutation();
   const [deleteFolder] = useDeleteMediaFolderMutation();
+  const [moveToTrash] = useMoveToTrashMutation();
 
-  /** 删除文件 */
   const handleDelete = useCallback(async (item: MediaItem): Promise<void> => {
-    if (!confirm(`确定删除「${item.original_name}」？`)) return;
     setActionLoading(prev => ({ ...prev, [item.id]: true }));
     try {
-      await deleteMedia(item.id).unwrap();
+      await moveToTrash(item.id).unwrap();
       if (selectedItem?.id === item.id) onSelectItem(null);
+      toast({ title: '已移入回收站', description: item.original_name });
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败');
+      toast({
+        title: '删除失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(prev => ({ ...prev, [item.id]: false }));
     }
-  }, [selectedItem, onSelectItem, deleteMedia]);
+  }, [selectedItem, onSelectItem, moveToTrash]);
 
-  /** 切换星标 */
   const handleToggleStar = useCallback(async (item: MediaItem): Promise<void> => {
     setActionLoading(prev => ({ ...prev, [item.id]: true }));
     try {
       await toggleStar(item.id).unwrap();
+      toast({ title: item.starred ? '已取消收藏' : '已收藏', description: item.original_name });
     } catch (err) {
-      alert(err instanceof Error ? err.message : '操作失败');
+      toast({
+        title: '操作失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
     } finally {
       setActionLoading(prev => ({ ...prev, [item.id]: false }));
     }
   }, [toggleStar]);
 
-  /** 下载文件 */
-  const handleDownload = useCallback((item: MediaItem): void => {
-    const link = document.createElement('a');
-    link.href = item.url;
-    link.download = item.original_name;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = useCallback(async (item: MediaItem): Promise<void> => {
+    try {
+      const token = localStorage.getItem('token');
+      const url = `${API_BASE_URL}/media/${item.id}/download`;
+
+      const response = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) {
+        throw new Error(`下载失败: HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = item.original_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      toast({ title: '下载成功', description: item.original_name });
+    } catch (err) {
+      toast({
+        title: '下载失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
+    }
   }, []);
 
-  /** 创建文件夹 */
   const handleCreateFolder = useCallback(async (name: string): Promise<void> => {
     if (!name.trim()) return;
     try {
@@ -83,18 +109,26 @@ export function useMediaActions(options: UseMediaActionsOptions): UseMediaAction
         name: name.trim(),
         parent_id: currentFolderId,
       }).unwrap();
+      toast({ title: '文件夹创建成功', description: name.trim() });
     } catch (err) {
-      alert(err instanceof Error ? err.message : '创建文件夹失败');
+      toast({
+        title: '创建文件夹失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
     }
   }, [currentFolderId, createFolder]);
 
-  /** 删除文件夹 */
   const handleDeleteFolder = useCallback(async (folder: FolderItem): Promise<void> => {
-    if (!confirm(`确定删除文件夹「${folder.name}」及其内容？`)) return;
     try {
       await deleteFolder(folder.id).unwrap();
+      toast({ title: '文件夹已删除', description: folder.name });
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除文件夹失败');
+      toast({
+        title: '删除文件夹失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
     }
   }, [deleteFolder]);
 

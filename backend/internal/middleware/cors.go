@@ -114,6 +114,12 @@ func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
 
+		// 没有 Origin 头说明不是浏览器请求（如服务器代理、curl、移动端等），跳过 CORS 检查
+		if origin == "" {
+			c.Next()
+			return
+		}
+
 		// 检查origin是否在允许列表中
 		allowedOrigin := ""
 		for _, allowed := range config.AllowedOrigins {
@@ -130,11 +136,9 @@ func CORS() gin.HandlerFunc {
 			}
 		}
 
-		// 生产环境没有配置来源时拒绝
+		// 生产环境没有匹配到允许的来源时拒绝
 		if allowedOrigin == "" && os.Getenv("GIN_MODE") != "debug" {
-			if origin != "" {
-				log.Printf("❌ CORS blocked origin: %s (not in allowed list)", origin)
-			}
+			log.Printf("❌ CORS blocked origin: %s (not in allowed list)", origin)
 			c.AbortWithStatusJSON(403, gin.H{
 				"success": false,
 				"error": gin.H{

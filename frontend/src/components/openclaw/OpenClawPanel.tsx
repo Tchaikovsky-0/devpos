@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, Loader2, Send, Sparkles, WifiOff, X } from 'lucide-react';
+import { Bot, Loader2, Send, Sparkles, WifiOff, X, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useOpenClawContext } from '@/store/contexts/OpenClawContext';
@@ -72,13 +72,15 @@ export const OpenClawPanel: React.FC<OpenClawPanelProps> = memo(
     const { currentModule, currentObject } = useOpenClawContext();
 
     // ── RTK Query ──
-    const { error: healthError, isLoading: healthLoading } = useCheckOpenClawHealthQuery(
+    const { error: healthError, isLoading: healthLoading, refetch } = useCheckOpenClawHealthQuery(
       undefined,
       { pollingInterval: 30_000 },
     );
+    const refetchHealth = refetch;
     const [sendChatMessage, { isLoading: isSending }] = useSendChatMessageMutation();
 
     const isServiceUnavailable = !!healthError;
+    const isServiceConnected = !healthError && !healthLoading;
     const isThinking = isSending;
 
     // ── 自动滚动 ──
@@ -249,9 +251,33 @@ export const OpenClawPanel: React.FC<OpenClawPanelProps> = memo(
               <p className="text-xs text-text-secondary">{subtitle}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Connection status indicator */}
+            {isServiceConnected && (
+              <div className="flex items-center gap-1 text-xs text-emerald-500" title="AI 服务已连接">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">已连接</span>
+              </div>
+            )}
+            {isServiceUnavailable && !healthLoading && (
+              <button
+                className="flex items-center gap-1 text-xs text-warning hover:text-warning/80 transition-colors"
+                onClick={() => refetchHealth()}
+                title="点击重连"
+              >
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                <span className="hidden sm:inline">重连</span>
+              </button>
+            )}
+            {healthLoading && (
+              <div className="flex items-center gap-1 text-xs text-text-tertiary">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              </div>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-5">

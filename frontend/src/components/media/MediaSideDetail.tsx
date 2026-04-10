@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassButton from '../ui/GlassButton';
 import { formatMediaDate, formatFileSize, getFileIcon } from './mediaHelpers';
 import type { MediaItem } from '../../types/api/media';
-import { X, Star, StarOff, Trash2, Download } from 'lucide-react';
+import { X, Star, StarOff, Trash2, Download, Tag, Bot, Eye, Loader2 } from 'lucide-react';
+import { AnnotationPanel } from './AnnotationPanel';
+import {
+  useDefectAnalyzeMediaMutation,
+  useAnalyzeMediaMutation,
+} from '../../store/api/mediaApi';
+import { toast } from '@/components/ui/use-toast';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -40,29 +46,79 @@ const MediaSideDetail: React.FC<MediaSideDetailProps> = ({
   onDownload,
   onToggleStar,
   onDelete,
-}) => (
+}) => {
+  const [showAnnotations, setShowAnnotations] = useState(false);
+  const [analyzingDefect, setAnalyzingDefect] = useState(false);
+  const [analyzingAI, setAnalyzingAI] = useState(false);
+
+  const [defectAnalyze] = useDefectAnalyzeMediaMutation();
+  const [aiAnalyze] = useAnalyzeMediaMutation();
+
+  const handleDefectAnalyze = async () => {
+    if (!item) return;
+    setAnalyzingDefect(true);
+    try {
+      const result = await defectAnalyze({ media_ids: [item.id] }).unwrap();
+      const defectCount = result.reduce((sum: number, r: { defects: unknown[] }) => sum + (r.defects?.length || 0), 0);
+      toast({
+        title: 'YOLO 缺陷分析完成',
+        description: defectCount > 0 ? `检测到 ${defectCount} 个缺陷` : '未检测到缺陷',
+      });
+    } catch (err) {
+      toast({
+        title: '缺陷分析失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
+    } finally {
+      setAnalyzingDefect(false);
+    }
+  };
+
+  const handleAIAnalyze = async () => {
+    if (!item) return;
+    setAnalyzingAI(true);
+    try {
+      await aiAnalyze({ media_ids: [item.id], analysis_type: 'general' }).unwrap();
+      toast({
+        title: 'AI 分析完成',
+        description: 'OpenClaw 已生成分析报告',
+      });
+    } catch (err) {
+      toast({
+        title: 'AI 分析失败',
+        description: err instanceof Error ? err.message : '未知错误',
+        variant: 'destructive',
+      });
+    } finally {
+      setAnalyzingAI(false);
+    }
+  };
+
+  return (
   <AnimatePresence>
     {item && (
       <motion.div
-        className="w-80 border-l border-border bg-bg-primary flex flex-col shrink-0"
+        className="w-80 border-l border-border bg-bg-primary flex flex-col shrink-0 overflow-hidden"
         initial={{ width: 0, opacity: 0 }}
         animate={{ width: 320, opacity: 1 }}
         exit={{ width: 0, opacity: 0 }}
         transition={{ duration: 0.2 }}
       >
         {/* Close */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <h3 className="text-sm font-medium text-text-primary truncate">{item.original_name}</h3>
           <button
-            className="w-7 h-7 rounded flex items-center justify-center text-text-secondary hover:bg-bg-hover"
+            className="w-7 h-7 rounded flex items-center justify-center text-text-secondary hover:bg-bg-hover shrink-0"
             onClick={onClose}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Preview */}
-        <div className="p-4">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Preview */}
           <div className="aspect-video rounded-lg overflow-hidden bg-bg-tertiary mb-4">
             {item.type === 'image' ? (
               <img src={item.url} alt={item.original_name} className="w-full h-full object-contain" />
@@ -115,10 +171,55 @@ const MediaSideDetail: React.FC<MediaSideDetailProps> = ({
               删除
             </GlassButton>
           </div>
+
+          {/* AI Analysis */}
+          <div className="flex items-center gap-2 mt-3">
+            <GlassButton
+              variant="secondary"
+              size="sm"
+              leftIcon={analyzingDefect ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+              onClick={handleDefectAnalyze}
+              loading={analyzingDefect}
+              fullWidth
+            >
+              YOLO 缺陷检测
+            </GlassButton>
+            <GlassButton
+              variant="secondary"
+              size="sm"
+              leftIcon={analyzingAI ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+              onClick={handleAIAnalyze}
+              loading={analyzingAI}
+              fullWidth
+            >
+              AI 智能分析
+            </GlassButton>
+          </div>
+
+          {/* Annotation toggle */}
+          <div className="mt-4">
+            <GlassButton
+              variant="secondary"
+              size="sm"
+              leftIcon={<Tag className="w-4 h-4" />}
+              onClick={() => setShowAnnotations(!showAnnotations)}
+              fullWidth
+            >
+              {showAnnotations ? '收起标注' : '人工标注'}
+            </GlassButton>
+          </div>
+
+          {/* Annotation Panel */}
+          {showAnnotations && (
+            <div className="mt-4 border border-white/10 rounded-lg overflow-hidden" style={{ maxHeight: '400px' }}>
+              <AnnotationPanel mediaId={item.id} />
+            </div>
+          )}
         </div>
       </motion.div>
     )}
   </AnimatePresence>
-);
+  );
+};
 
 export default MediaSideDetail;

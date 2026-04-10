@@ -45,6 +45,8 @@ export const baseApi = createApi({
     'OpenClawMission',
     'OpenClawMissionStatistics',
     'AutomationTemplate',
+    'Annotation',
+    'AnnotationStats',
   ],
   endpoints: () => ({}),
 });
