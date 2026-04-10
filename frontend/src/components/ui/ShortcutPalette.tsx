@@ -87,7 +87,7 @@ export const ShortcutPalette: React.FC<ShortcutPaletteProps> = ({
       { id: 'goto-alerts', label: '跳转到告警处置', shortcut: '⌘1', icon: Siren, category: '导航', keywords: ['告警', '警报', '异常', '报警'] },
       { id: 'goto-tasks', label: '跳转到任务协同', shortcut: '⌘4', icon: ClipboardList, category: '导航', keywords: ['任务', '协同', '工单', '待办'] },
       { id: 'goto-assets', label: '跳转到资产设备', icon: ServerCog, category: '导航', keywords: ['资产', '设备', '传感器', '资产'] },
-      { id: 'goto-openclaw', label: '跳转到智能协同', icon: Bot, category: '导航', keywords: ['AI', '智能', '协同', '机器人'] },
+      { id: 'goto-openclaw', label: '打开 AI 助手', icon: Bot, category: '导航', keywords: ['AI', '智能', '助手', '机器人', 'OpenClaw'] },
       { id: 'goto-system', label: '跳转到系统管理', icon: ShieldCheck, category: '导航', keywords: ['系统', '管理', '设置', '配置'] },
     ];
 

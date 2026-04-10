@@ -7,6 +7,7 @@ export { FilePreviewDialog } from './FilePreviewDialog';
 export { BatchToolbar } from './BatchToolbar';
 export { MediaDetailPanel } from './MediaDetailPanel';
 export { EditDescriptionDialog } from './EditDescriptionDialog';
+export { SemanticDedupeDialog } from './SemanticDedupeDialog';
 export { SkeletonGrid, SkeletonList } from './SkeletonGrid';
 export { default as MediaToolbar } from './MediaToolbar';
 export { default as MediaGrid } from './MediaGrid';

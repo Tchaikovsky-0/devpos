@@ -1,9 +1,0 @@
-{
-  "enabledPlugins": {
-    "skill-creator@cb_teams_marketplace": true,
-    "data@cb_teams_marketplace": true
-  },
-  "rulesDirectory": ".codebuddy/rules",
-  "agentsDirectory": ".codebuddy/agents",
-  "skillsDirectory": ".codebuddy/skills"
-}

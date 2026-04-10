@@ -7,61 +7,54 @@ import {
   LayoutDashboard,
   Bell,
   FolderOpen,
-  Video,
   Settings,
-  MessageSquare,
+  Bot,
 } from 'lucide-react';
 import { CommandBar, useCommandBar } from '../command-bar/CommandBar';
 import { FloatingCopilot } from '../copilot/FloatingCopilot';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/store';
-import { toggleCopilot as toggleCopilotAction, setContext } from '@/store/copilotSlice';
-
-/**
- * MainLayout - 主布局组件
- * 整合超窄侧边栏、命令面板、AI Copilot
- */
+import { toggleCopilot as toggleCopilotAction, setContext, openCopilot, addUserMessage, sendMessage } from '@/store/copilotSlice';
+import { OPENCLAW_COMPOSE_EVENT, type OpenClawComposeDetail } from '@/components/openclaw/openclawBridge';
 
 export const MainLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  // 命令面板状态
   const { isOpen: isCommandBarOpen, close: closeCommandBar } = useCommandBar();
   const dispatch = useDispatch<AppDispatch>();
   const toggleCopilot = () => dispatch(toggleCopilotAction());
 
-  // 导航项配置
   const navItems: NavItem[] = [
     { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: '监控大屏', href: '/dashboard' },
     { id: 'alerts', icon: <Bell size={20} />, label: '告警管理', href: '/alerts', badge: 3 },
     { id: 'media', icon: <FolderOpen size={20} />, label: '媒体库', href: '/media' },
-    { id: 'videos', icon: <Video size={20} />, label: '视频流', href: '/videos' },
   ];
 
   const bottomItems: NavItem[] = [
-    { id: 'copilot', icon: <MessageSquare size={20} />, label: 'AI 助手' },
+    { id: 'openclaw', icon: <Bot size={20} />, label: 'OpenClaw AI' },
     { id: 'settings', icon: <Settings size={20} />, label: '系统设置', href: '/system' },
   ];
 
-  // 根据当前路由确定激活项
   const getActiveId = () => {
     const path = location.pathname;
     if (path.includes('/dashboard') || path === '/') return 'dashboard';
     if (path.includes('/alerts')) return 'alerts';
     if (path.includes('/media')) return 'media';
-    if (path.includes('/videos')) return 'videos';
     if (path.includes('/system') || path.includes('/settings')) return 'settings';
     return 'dashboard';
   };
 
-  // 处理导航
   const handleNavClick = (item: { id: string; href?: string }) => {
+    if (item.id === 'openclaw') {
+      toggleCopilot();
+      return;
+    }
+    
     const routes: Record<string, string> = {
       dashboard: '/dashboard',
       alerts: '/alerts',
       media: '/media',
-      videos: '/videos',
       settings: '/system',
     };
     
@@ -69,7 +62,6 @@ export const MainLayout: React.FC = () => {
     if (path) navigate(path);
   };
 
-  // 更新 Copilot 上下文
   useEffect(() => {
     const path = location.pathname;
     if (path.includes('/dashboard')) {
@@ -83,9 +75,20 @@ export const MainLayout: React.FC = () => {
     }
   }, [location.pathname, dispatch]);
 
+  // Listen for OpenClaw compose events from media library AI buttons
+  useEffect(() => {
+    const handleCompose = (event: Event) => {
+      const detail = (event as CustomEvent<OpenClawComposeDetail>).detail;
+      dispatch(openCopilot());
+      dispatch(addUserMessage(detail.prompt));
+      dispatch(sendMessage({ message: detail.prompt, useStream: true }));
+    };
+    window.addEventListener(OPENCLAW_COMPOSE_EVENT, handleCompose);
+    return () => window.removeEventListener(OPENCLAW_COMPOSE_EVENT, handleCompose);
+  }, [dispatch]);
+
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
-      {/* Narrow Sidebar */}
       <NarrowSidebar
         items={navItems}
         bottomItems={bottomItems}
@@ -93,7 +96,6 @@ export const MainLayout: React.FC = () => {
         onItemClick={handleNavClick}
       />
 
-      {/* Main Content Area */}
       <main className="ml-12 h-screen overflow-hidden flex flex-col">
         <AppHeader
           onOpenPalette={() => {}}
@@ -109,13 +111,11 @@ export const MainLayout: React.FC = () => {
         </motion.div>
       </main>
 
-      {/* Command Bar */}
       <CommandBar
         isOpen={isCommandBarOpen}
         onClose={closeCommandBar}
       />
 
-      {/* Floating Copilot */}
       <FloatingCopilot />
     </div>
   );

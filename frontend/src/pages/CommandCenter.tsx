@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useDispatch } from 'react-redux';
 import { buildAlertPath } from '../lib/navigation';
 import { VideoGrid, GridLayout } from '../components/video/VideoGrid';
 import { VideoStreamProps } from '../components/video/VideoStream';
 import { useGetStreamsQuery, useGetStreamStatisticsQuery } from '../store/api/streamsApi';
 import { useGetDashboardStatsQuery } from '../store/api/dashboardApi';
 import type { Stream } from '@/types/api';
+import type { AppDispatch } from '@/store';
+import { openCopilot, addUserMessage, sendMessage } from '@/store/copilotSlice';
 import {
   Video,
   AlertTriangle,
@@ -15,6 +18,7 @@ import {
   Filter,
   Loader2,
   WifiOff,
+  Sparkles,
 } from 'lucide-react';
 
 /**
@@ -46,6 +50,7 @@ interface CommandCenterStats {
 
 const CommandCenter: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const [searchParams] = useSearchParams();
   const urlStreamId = searchParams.get('stream_id');
   const urlHighlight = searchParams.get('highlight') === 'true';
@@ -53,6 +58,12 @@ const CommandCenter: React.FC = () => {
   const [layout, setLayout] = useState<GridLayout>('2x2');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [highlightedStreamId, setHighlightedStreamId] = useState<string | null>(null);
+
+  const handleOpenClawAction = useCallback((message: string) => {
+    dispatch(openCopilot());
+    dispatch(addUserMessage(message));
+    dispatch(sendMessage({ message, useStream: true }));
+  }, [dispatch]);
 
   // Apply stream_id + highlight from URL query params
   useEffect(() => {
@@ -150,7 +161,7 @@ const CommandCenter: React.FC = () => {
   }, []);
 
   // 处理全屏
-  const handleFullscreen = useCallback((_streamId: string) => {
+  const handleFullscreen = useCallback(() => {
     // TODO: 实现全屏功能
   }, []);
 
@@ -178,6 +189,13 @@ const CommandCenter: React.FC = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            <button
+              className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
+              onClick={() => handleOpenClawAction('分析当前监控画面中的异常情况')}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              AI 分析
+            </button>
             <button className="w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-secondary hover:bg-bg-hover transition-colors">
               <Filter className="w-4 h-4" />
             </button>

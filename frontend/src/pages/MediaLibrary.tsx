@@ -1,104 +1,72 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   useListMediaQuery,
-  useListMediaFoldersQuery,
+  useListTrashQuery,
   useUploadMediaMutation,
+  useSemanticDedupeMutation,
+  useListMediaFoldersQuery,
 } from '../store/api/mediaApi';
-import type { MediaItem, FolderItem } from '../types/api/media';
-import type { BreadcrumbItem, UploadTask } from '../components/media/mediaTypes';
 import { useMediaActions } from '../hooks/useMediaActions';
 import MediaToolbar from '../components/media/MediaToolbar';
 import MediaGrid from '../components/media/MediaGrid';
 import MediaSideDetail from '../components/media/MediaSideDetail';
 import UploadManager from '../components/media/UploadManager';
-import PermissionPanel from '../components/media/PermissionPanel';
+import { SemanticDedupeDialog } from '../components/media/SemanticDedupeDialog';
+import { Button } from '@/components/ui/Button';
+import { Trash2, X } from 'lucide-react';
+import type { MediaItem, FolderItem } from '../types/api/media';
+import type { UploadTask, BreadcrumbItem } from '../components/media/mediaTypes';
 
-/**
- * MediaLibrary - 媒体库页面容器（RTK Query 版）
- * 完整支持文件/文件夹 CRUD、上传、搜索、星标、分页
- */
 const MediaLibrary: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const urlAlertId = searchParams.get('alert_id');
-  const urlTimestamp = searchParams.get('timestamp');
-  const urlStreamId = searchParams.get('stream_id');
-  const hasAlertContext = !!(urlAlertId || urlTimestamp || urlStreamId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const alertId = searchParams.get('alert_id');
+  const alertTimestamp = searchParams.get('timestamp');
+  const alertStreamId = searchParams.get('stream_id');
 
-  // ---- 分页 & 过滤参数 ----
   const [page, setPage] = useState(1);
-  const pageSize = 30;
-
-  // ---- 导航状态 ----
-  const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
-  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '全部文件' }]);
-
-  // ---- UI 状态 ----
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [pageSize] = useState(20);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string | ''>('');
-  const [showStarred, setShowStarred] = useState(false);
-
-  // ---- 上传 ----
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [mediaType, setMediaType] = useState<string>('');
+  const [starredFilter, setStarredFilter] = useState<boolean | undefined>(undefined);
+  const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: '根目录' }]);
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [uploads, setUploads] = useState<UploadTask[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showTrash, setShowTrash] = useState(false);
+  const [showSemanticDedupe, setShowSemanticDedupe] = useState(false);
+  const [selectedForDedupe, setSelectedForDedupe] = useState<number[]>([]);
 
-  // ---- 新建文件夹 ----
-  const [showNewFolder, setShowNewFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const hasActiveUploads = uploads.some(u => u.progress === 'uploading' || u.progress === 'pending');
+  const uploadQueueRef = useRef<UploadTask[]>([]);
+  const isProcessingRef = useRef(false);
+  const MAX_CONCURRENT = 3;
 
-  // ---- 文件夹权限面板 ----
-  const [permissionFolder, setPermissionFolder] = useState<FolderItem | null>(null);
-
-  // ==========================================================================
-  // RTK Query - 数据获取
-  // ==========================================================================
-
-  const listParams = useMemo(() => ({
+  const { data: mediaData, isLoading: mediaLoading } = useListMediaQuery({
     page,
     page_size: pageSize,
-    folder_id: currentFolderId,
-    type: filterType || undefined,
-    search: searchQuery || undefined,
-    starred: showStarred || undefined,
-  }), [page, pageSize, currentFolderId, filterType, searchQuery, showStarred]);
+    type: mediaType || undefined,
+    folder_id: currentFolderId !== null ? currentFolderId : undefined,
+    search: debouncedSearch || undefined,
+    starred: starredFilter,
+    trashed: false,
+  });
 
-  const {
-    data: mediaResponse,
-    isLoading: filesLoading,
-    isFetching: filesFetching,
-    error: filesError,
-    refetch: refetchFiles,
-  } = useListMediaQuery(listParams);
+  const { data: trashData, isLoading: trashLoading } = useListTrashQuery({
+    page,
+    page_size: pageSize,
+  }, { skip: !showTrash });
 
-  const {
-    data: foldersResponse,
-    refetch: refetchFolders,
-  } = useListMediaFoldersQuery({ parent_id: currentFolderId ?? undefined });
-
-  // 全部文件夹（平铺，用于面包屑追溯）
-  const { data: allFoldersResponse } = useListMediaFoldersQuery({ all: true });
-
-  // ---- 数据提取 ----
-  const files = mediaResponse?.data?.items ?? [];
-  const totalFiles = mediaResponse?.data?.total ?? 0;
-  const folders = foldersResponse?.data ?? [];
-  const allFolders = allFoldersResponse?.data ?? [];
-  const loading = filesLoading;
-  const error = filesError ? ('data' in filesError ? String((filesError as Record<string, unknown>).data) : '加载媒体库数据失败') : null;
-
-  // ==========================================================================
-  // RTK Query - 上传 Mutation
-  // ==========================================================================
+  const { data: foldersData } = useListMediaFoldersQuery({
+    parent_id: currentFolderId !== null ? currentFolderId : null,
+  });
 
   const [uploadMedia] = useUploadMediaMutation();
+  const [semanticDedupe] = useSemanticDedupeMutation();
 
-  // ---- 操作 Hook ----
   const {
     actionLoading,
-    creatingFolder,
     handleDelete,
     handleToggleStar,
     handleDownload,
@@ -110,225 +78,226 @@ const MediaLibrary: React.FC = () => {
     currentFolderId,
   });
 
-  // ==========================================================================
-  // 刷新
-  // ==========================================================================
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const handleRefresh = useCallback((): void => {
-    refetchFiles();
-    refetchFolders();
-  }, [refetchFiles, refetchFolders]);
+  const processUploadQueue = useCallback(async () => {
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
 
-  // ---- 文件夹权限管理 ----
-  const handleOpenPermission = useCallback((folder: FolderItem): void => {
-    setPermissionFolder(folder);
-  }, []);
-
-  const handleClosePermission = useCallback((): void => {
-    setPermissionFolder(null);
-  }, []);
-
-  const handleFolderUpdated = useCallback((): void => {
-    refetchFolders();
-  }, [refetchFolders]);
-
-  // ==========================================================================
-  // 文件夹导航
-  // ==========================================================================
-
-  const navigateToFolder = useCallback((folderId: number | null, folderName: string): void => {
-    setCurrentFolderId(folderId);
-    setSelectedItem(null);
-    setPage(1);
-    if (folderId === null) {
-      setBreadcrumbs([{ id: null, name: '全部文件' }]);
-    } else {
-      const path: BreadcrumbItem[] = [{ id: null, name: '全部文件' }];
-      const buildPath = (id: number): void => {
-        const folder = allFolders.find(f => f.id === id);
-        if (folder) {
-          if (folder.parent_id !== null) buildPath(folder.parent_id);
-          path.push({ id: folder.id, name: folder.name });
+    while (uploadQueueRef.current.length > 0) {
+      const batch = uploadQueueRef.current.splice(0, MAX_CONCURRENT);
+      const promises = batch.map(async (task) => {
+        setUploads(prev => prev.map(u => u.id === task.id ? { ...u, progress: 'uploading' as const, progressPercent: 0 } : u));
+        try {
+          const formData = new FormData();
+          formData.append('file', task.file);
+          if (task.folderId !== null) {
+            formData.append('folder_id', String(task.folderId));
+          }
+          await uploadMedia(formData).unwrap();
+          setUploads(prev => prev.map(u => u.id === task.id ? { ...u, progress: 'done' as const, progressPercent: 100 } : u));
+        } catch (err) {
+          setUploads(prev => prev.map(u => u.id === task.id ? {
+            ...u,
+            progress: 'error' as const,
+            errorMsg: err instanceof Error ? err.message : '上传失败',
+          } : u));
         }
-      };
-      buildPath(folderId);
-      if (path.length === 1) path.push({ id: folderId, name: folderName });
-      setBreadcrumbs(path);
-    }
-  }, [allFolders]);
-
-  const navigateToBreadcrumb = useCallback((item: BreadcrumbItem): void => {
-    setCurrentFolderId(item.id);
-    setSelectedItem(null);
-    setPage(1);
-    if (item.id === null) {
-      setBreadcrumbs([{ id: null, name: '全部文件' }]);
-    } else {
-      setBreadcrumbs(prev => {
-        const idx = prev.findIndex(b => b.id === item.id);
-        return idx >= 0 ? prev.slice(0, idx + 1) : prev;
       });
+      await Promise.all(promises);
     }
-  }, []);
 
-  // ==========================================================================
-  // 上传
-  // ==========================================================================
+    isProcessingRef.current = false;
+  }, [uploadMedia]);
 
-  const processUpload = useCallback(async (file: File, taskId: string): Promise<void> => {
-    setUploads(prev => prev.map(u => u.id === taskId ? { ...u, progress: 'uploading' } : u));
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (currentFolderId !== null) {
-        formData.append('folder_id', String(currentFolderId));
-      }
-      await uploadMedia(formData).unwrap();
-      setUploads(prev => prev.map(u => u.id === taskId ? { ...u, progress: 'done' } : u));
-      // RTK Query invalidatesTags 自动刷新列表，无需手动 setFiles
-    } catch (err) {
-      setUploads(prev => prev.map(u =>
-        u.id === taskId
-          ? { ...u, progress: 'error', errorMsg: err instanceof Error ? err.message : '上传失败' }
-          : u
-      ));
-    }
-  }, [currentFolderId, uploadMedia]);
-
-  const handleFilesSelected = useCallback((fileList: FileList | File[]): void => {
-    const newTasks: UploadTask[] = Array.from(fileList).map(file => ({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  const handleFiles = useCallback((files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const newTasks: UploadTask[] = fileArray.map(file => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       file,
-      progress: 'pending' as const,
+      progress: 'pending',
+      progressPercent: 0,
+      folderId: currentFolderId,
     }));
     setUploads(prev => [...prev, ...newTasks]);
-    newTasks.forEach(task => processUpload(task.file, task.id));
-  }, [processUpload]);
+    uploadQueueRef.current.push(...newTasks);
+    processUploadQueue();
+  }, [currentFolderId, processUploadQueue]);
 
-  const retryUpload = useCallback((task: UploadTask): void => {
-    processUpload(task.file, task.id);
-  }, [processUpload]);
+  const handleRetryUpload = useCallback((task: UploadTask) => {
+    setUploads(prev => prev.map(u => u.id === task.id ? { ...u, progress: 'pending' as const, errorMsg: undefined } : u));
+    uploadQueueRef.current.push(task);
+    processUploadQueue();
+  }, [processUploadQueue]);
 
-  const clearFinishedUploads = useCallback((): void => {
-    setUploads(prev => prev.filter(u => u.progress !== 'done'));
+  const handleClearFinished = useCallback(() => {
+    setUploads(prev => prev.filter(u => u.progress === 'uploading' || u.progress === 'pending'));
   }, []);
 
-  // ---- 拖拽上传 ----
-  const handleDragOver = useCallback((e: React.DragEvent): void => { e.preventDefault(); setIsDragging(true); }, []);
-  const handleDragLeave = useCallback((e: React.DragEvent): void => { e.preventDefault(); setIsDragging(false); }, []);
-  const handleDrop = useCallback((e: React.DragEvent): void => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files.length > 0) handleFilesSelected(e.dataTransfer.files);
-  }, [handleFilesSelected]);
+  const handleNavigateBreadcrumb = useCallback((index: number) => {
+    const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
+    setBreadcrumbs(newBreadcrumbs);
+    const target = newBreadcrumbs[newBreadcrumbs.length - 1];
+    setCurrentFolderId(target.id);
+    setPage(1);
+    setSelectedItem(null);
+  }, [breadcrumbs]);
 
-  // ==========================================================================
-  // 派生状态
-  // ==========================================================================
-  const totalPages = Math.max(1, Math.ceil(totalFiles / pageSize));
-  const hasActiveUploads = uploads.some(u => u.progress === 'pending' || u.progress === 'uploading');
+  const handleSemanticDedupe = useCallback(() => {
+    if (selectedForDedupe.length > 0) {
+      setShowSemanticDedupe(true);
+    } else {
+      const allIds = (mediaData?.data?.items || []).map((item: MediaItem) => item.id);
+      if (allIds.length < 2) {
+        alert('当前文件夹文件不足 2 个，无法去重');
+        return;
+      }
+      setSelectedForDedupe(allIds);
+      setShowSemanticDedupe(true);
+    }
+  }, [selectedForDedupe, mediaData]);
 
-  // ==========================================================================
-  // 渲染
-  // ==========================================================================
+  const handleConfirmSemanticDedupe = useCallback(async (ids: number[]) => {
+    try {
+      await semanticDedupe({ ids }).unwrap();
+      setShowSemanticDedupe(false);
+      setSelectedForDedupe([]);
+    } catch (err) {
+      console.error('语义去重失败:', err);
+    }
+  }, [semanticDedupe]);
+
+  const handleToggleTrash = useCallback(() => {
+    setShowTrash(prev => !prev);
+    setPage(1);
+    setSelectedItem(null);
+    setBreadcrumbs([{ id: null, name: '根目录' }]);
+    setCurrentFolderId(null);
+  }, []);
+
+  const currentData = showTrash ? trashData : mediaData;
+  const currentLoading = showTrash ? trashLoading : mediaLoading;
+
   return (
-    <div
-      className="h-full flex flex-col bg-bg-primary"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      {/* Alert Context Banner */}
-      {hasAlertContext && (
-        <div className="px-4 py-2 bg-accent-muted border-b border-accent/30 flex items-center gap-2 text-sm text-accent">
-          <span>ℹ️</span>
-          <span>
-            正在查看告警关联的媒体文件
-            {urlAlertId && <span className="ml-1 font-mono text-xs">(告警 ID: {urlAlertId})</span>}
+    <div className="flex flex-col h-full">
+      {alertId && alertTimestamp && alertStreamId && (
+        <div className="mx-4 mt-2 border border-accent/20 bg-accent/5 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-text-secondary">
+            来自告警 #<strong>{alertId}</strong> 的媒体文件
+            {alertStreamId && `（流: ${alertStreamId}）`}
+            {alertTimestamp && ` · ${new Date(Number(alertTimestamp)).toLocaleString()}`}
           </span>
+          <Button variant="ghost" size="sm" onClick={() => setSearchParams({})}>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
       )}
-      <MediaToolbar
-        breadcrumbs={breadcrumbs}
-        searchQuery={searchQuery}
-        filterType={filterType}
-        showStarred={showStarred}
-        viewMode={viewMode}
-        loading={loading || filesFetching}
-        showNewFolder={showNewFolder}
-        newFolderName={newFolderName}
-        creatingFolder={creatingFolder}
-        onNavigateToBreadcrumb={navigateToBreadcrumb}
-        onSearchChange={(q) => { setSearchQuery(q); setPage(1); }}
-        onFilterTypeChange={(t) => { setFilterType(t); setPage(1); }}
-        onToggleStarred={() => { setShowStarred(s => !s); setPage(1); }}
-        onToggleViewMode={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
-        onRefresh={handleRefresh}
-        onShowNewFolder={() => setShowNewFolder(true)}
-        onUploadClick={() => fileInputRef.current?.click()}
-        onNewFolderNameChange={setNewFolderName}
-        onCreateFolder={() => { handleCreateFolder(newFolderName).then(() => { setNewFolderName(''); setShowNewFolder(false); }); }}
-        onCancelNewFolder={() => { setShowNewFolder(false); setNewFolderName(''); }}
-      />
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          if (e.target.files?.length) handleFilesSelected(e.target.files);
-          e.target.value = '';
-        }}
-      />
 
       <UploadManager
         uploads={uploads}
         hasActiveUploads={hasActiveUploads}
-        onRetry={retryUpload}
-        onClearFinished={clearFinishedUploads}
+        onRetry={handleRetryUpload}
+        onClearFinished={handleClearFinished}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        <MediaGrid
-          files={files}
-          folders={folders}
-          viewMode={viewMode}
-          loading={loading}
-          error={error}
-          selectedItem={selectedItem}
-          isDragging={isDragging}
-          page={page}
-          totalPages={totalPages}
-          totalFiles={totalFiles}
-          onSelectItem={setSelectedItem}
-          onNavigateToFolder={(id, name) => navigateToFolder(id, name)}
-          onDeleteFolder={handleDeleteFolder}
-          onToggleStar={handleToggleStar}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-          onPageChange={setPage}
-          onRefresh={handleRefresh}
-          onOpenPermission={handleOpenPermission}
-        />
+      <MediaToolbar
+        searchQuery={searchQuery}
+        onSearchChange={(q: string) => setSearchQuery(q)}
+        mediaType={mediaType}
+        onMediaTypeChange={setMediaType}
+        starredFilter={starredFilter}
+        onStarredFilterChange={setStarredFilter}
+        breadcrumbs={breadcrumbs}
+        onNavigateBreadcrumb={handleNavigateBreadcrumb}
+        onCreateFolder={() => handleCreateFolder('新建文件夹')}
+        onFiles={handleFiles}
+        onToggleTrash={handleToggleTrash}
+        isTrashView={showTrash}
+        onSemanticDedupe={handleSemanticDedupe}
+        hasSelectedForDedupe={selectedForDedupe.length > 0}
+      />
 
-        <MediaSideDetail
-          item={selectedItem}
-          actionLoading={actionLoading}
-          onClose={() => setSelectedItem(null)}
-          onDownload={handleDownload}
-          onToggleStar={handleToggleStar}
-          onDelete={handleDelete}
-        />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden">
+          {showTrash && (
+            <div className="px-4 py-2 bg-yellow-500/5 border-b border-border flex items-center gap-2">
+              <Trash2 className="w-4 h-4 text-yellow-500" />
+              <span className="text-sm text-text-secondary">回收站 · 文件将在 30 天后自动清除</span>
+            </div>
+          )}
+          {currentLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-text-secondary">加载中...</div>
+            </div>
+          ) : (
+            <MediaGrid
+              files={(currentData?.data?.items || []) as MediaItem[]}
+              folders={(foldersData?.data || []) as FolderItem[]}
+              viewMode="grid"
+              loading={false}
+              error={null}
+              selectedItem={selectedItem}
+              isDragging={false}
+              page={page}
+              totalPages={Math.ceil((currentData?.data?.total || 0) / pageSize)}
+              totalFiles={currentData?.data?.total || 0}
+              onSelectItem={setSelectedItem}
+              onNavigateToFolder={(folderId: number, folderName: string) => {
+                setCurrentFolderId(folderId);
+                setBreadcrumbs(prev => [...prev, { id: folderId, name: folderName }]);
+                setPage(1);
+                setSelectedItem(null);
+              }}
+              onDeleteFolder={handleDeleteFolder}
+              onToggleStar={handleToggleStar}
+              onDownload={handleDownload}
+              onDelete={handleDelete}
+              onPageChange={setPage}
+              onRefresh={() => {}}
+            />
+          )}
+        </div>
+
+        {selectedItem && (
+          <>
+            <div className="hidden lg:block w-80 border-l border-border overflow-y-auto">
+              <MediaSideDetail
+                item={selectedItem}
+                actionLoading={actionLoading}
+                onClose={() => setSelectedItem(null)}
+                onToggleStar={handleToggleStar}
+                onDownload={handleDownload}
+                onDelete={handleDelete}
+              />
+            </div>
+            <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setSelectedItem(null)}>
+              <div className="absolute right-0 top-0 bottom-0 w-80 bg-bg border-l border-border overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <MediaSideDetail
+                  item={selectedItem}
+                  actionLoading={actionLoading}
+                  onClose={() => setSelectedItem(null)}
+                  onToggleStar={handleToggleStar}
+                  onDownload={handleDownload}
+                  onDelete={handleDelete}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* 文件夹权限面板 */}
-      {permissionFolder && (
-        <PermissionPanel
-          folder={permissionFolder}
-          onClose={handleClosePermission}
-          onFolderUpdated={handleFolderUpdated}
-        />
-      )}
+      <SemanticDedupeDialog
+        open={showSemanticDedupe}
+        onOpenChange={setShowSemanticDedupe}
+        selectedIds={selectedForDedupe}
+        onConfirm={handleConfirmSemanticDedupe}
+      />
     </div>
   );
 };

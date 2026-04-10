@@ -1,6 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  Bot,
   FolderKanban,
   Radar,
   ShieldCheck,
@@ -39,14 +38,6 @@ export const navigationModules: NavigationModule[] = [
     description: '',
     path: '/alerts',
     icon: Siren,
-  },
-  {
-    id: 'openclaw',
-    label: '智能协同',
-    description: '',
-    path: '/openclaw',
-    aliases: ['/ai', '/command'],
-    icon: Bot,
   },
   {
     id: 'system',

@@ -56,16 +56,16 @@ class ChatService:
         self,
         api_base_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        model: str = "gpt-3.5-turbo",
+        model: Optional[str] = None,
         openclaw_url: Optional[str] = None,
         openclaw_token: Optional[str] = None,
     ):
         self.api_base_url = (
             api_base_url
-            or os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+            or os.getenv("OPENAI_BASE_URL", os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"))
         ).rstrip("/")
         self.api_key = api_key or os.getenv("OPENAI_API_KEY", "")
-        self.model = model
+        self.model = model or os.getenv("OPENAI_MODEL", "qwen-plus")
 
         # OpenClaw config
         self.openclaw_url = (

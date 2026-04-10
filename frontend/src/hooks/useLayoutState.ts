@@ -85,7 +85,7 @@ export function getModuleStatusText(moduleId: string, alertCount: number): strin
     alerts: `${alertCount} 条待处置`,
     tasks: '任务链就绪',
     assets: '设备台账就绪',
-    openclaw: '智能协同就绪',
+    openclaw: 'AI 助手就绪',
     system: '系统运行正常',
   };
   return statusMap[moduleId] ?? '状态稳定';

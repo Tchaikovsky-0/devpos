@@ -21,9 +21,9 @@ const buttonVariants = cva(
         destructive:
           'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-md hover:translate-y-[-1px] hover:shadow-lg hover:from-red-400 hover:to-red-600 active:translate-y-0 active:shadow-md',
         outline:
-          'border border-border-subtle bg-bg-elevated text-text-primary hover:border-border hover:bg-bg-tertiary hover:translate-y-[-1px] active:translate-y-0',
+          'border border-border bg-bg-elevated text-text-primary hover:border-border-strong hover:bg-bg-tertiary hover:translate-y-[-1px] active:translate-y-0',
         secondary:
-          'bg-bg-elevated text-text-primary border border-border-subtle hover:bg-bg-tertiary hover:border-border hover:translate-y-[-1px] active:translate-y-0',
+          'bg-bg-elevated text-text-primary border border-border hover:bg-bg-tertiary hover:border-border-strong hover:translate-y-[-1px] active:translate-y-0',
         ghost:
           'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
         link:

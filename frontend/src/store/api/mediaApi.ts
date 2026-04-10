@@ -71,7 +71,7 @@ export const mediaApi = baseApi.injectEndpoints({
           ...(params?.type && { type: params.type }),
           ...(params?.folder_id !== undefined && { folder_id: params.folder_id }),
           ...(params?.search && { search: params.search }),
-          ...(params?.starred !== undefined && { starred: String(params.starred) }),
+          ...(params?.starred !== undefined && { starred: params.starred ? 'true' : 'false' }),
         },
       }),
       providesTags: (result) =>
@@ -84,6 +84,24 @@ export const mediaApi = baseApi.injectEndpoints({
     }),
 
     /** 获取回收站媒体列表 */
+    listTrash: builder.query<MediaListResponse, MediaListParams | undefined>({
+      query: (params) => ({
+        url: '/media/trash',
+        params: {
+          page: params?.page ?? 1,
+          page_size: params?.page_size ?? 20,
+        },
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.items.map(({ id }: MediaItem) => ({ type: 'Media' as const, id })),
+              { type: 'Media' as const, id: 'TRASH' },
+            ]
+          : [{ type: 'Media' as const, id: 'TRASH' }],
+    }),
+
+    /** 获取回收站媒体列表 (alias) */
     listTrashMedia: builder.query<MediaListResponse, MediaListParams | undefined>({
       query: (params) => ({
         url: '/media/trash',
@@ -308,6 +326,12 @@ export const mediaApi = baseApi.injectEndpoints({
       invalidatesTags: ['Media', 'MediaStatistics'],
     }),
 
+    /** 语义去重 */
+    semanticDedupe: builder.mutation<{ code: number; data: { kept: number; removed: number; groups: Array<{ kept_id: number; kept_name: string; kept_url: string; removed_ids: number[]; removed_info: Array<{ id: number; name: string; url: string; size: number; width: number; height: number }>; similarity: number; reason: string }> } }, { ids: number[] }>({
+      query: (body) => ({ url: '/media/batch/semantic-dedupe', method: 'POST', body }),
+      invalidatesTags: ['Media', 'MediaStatistics'],
+    }),
+
     /** AI 媒体分析 */
     analyzeMedia: builder.mutation<{ code: number; data: unknown }, { media_ids: number[]; analysis_type?: string }>({
       query: (body) => ({ url: '/media/analyze', method: 'POST', body }),
@@ -339,6 +363,7 @@ export const mediaApi = baseApi.injectEndpoints({
 
 export const {
   useListMediaQuery,
+  useListTrashQuery,
   useListTrashMediaQuery,
   useGetMediaQuery,
   useUploadMediaMutation,
@@ -363,6 +388,7 @@ export const {
   useBatchMoveMutation,
   useBatchDeleteMutation,
   useBatchDedupeMutation,
+  useSemanticDedupeMutation,
   useAnalyzeMediaMutation,
   useDefectAnalyzeMediaMutation,
   useGenerateReportMutation,

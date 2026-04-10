@@ -26,7 +26,8 @@ services:
     image: redis:7-alpine
     container_name: xunjianbao-redis
     restart: always
-    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    command: >
+      sh -c 'if [ -n "$REDIS_PASSWORD" ]; then redis-server --requirepass "$REDIS_PASSWORD"; else redis-server; fi'
     ports:
       - "6379:6379"
     volumes:
@@ -82,6 +83,11 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-}
       PORT: "8095"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-qwen-plus}
+      OPENCLAW_URL: ${OPENCLAW_URL:-http://openclaw:8096}
+      OPENCLAW_TOKEN: ${OPENCLAW_TOKEN:-}
     networks:
       - xunjianbao-network
     healthcheck:

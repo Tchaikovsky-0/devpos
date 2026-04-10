@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -33,16 +34,26 @@ type OpenClawService struct {
 	aiServiceURL string
 }
 
-// NewOpenClawService creates an OpenClawService from config.
+// NewOpenClawService creates an OpenClawService from environment variables.
 func NewOpenClawService(db *gorm.DB, cfg *config.Config) *OpenClawService {
+	openClawURL := os.Getenv("OPENCLAW_URL")
+	if openClawURL == "" {
+		openClawURL = "http://openclaw:8096"
+	}
+	openClawToken := os.Getenv("OPENCLAW_TOKEN")
+	aiServiceURL := os.Getenv("AI_SERVICE_URL")
+	if aiServiceURL == "" {
+		aiServiceURL = "http://ai:8095"
+	}
+	_ = cfg
 	return &OpenClawService{
 		db:      db,
-		baseURL: cfg.OpenClawURL,
-		token:   cfg.OpenClawToken,
+		baseURL: openClawURL,
+		token:   openClawToken,
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
-		aiServiceURL: cfg.AIServiceURL,
+		aiServiceURL: aiServiceURL,
 	}
 }
 
@@ -500,4 +511,213 @@ func (s *OpenClawService) DeleteTemplate(ctx context.Context, tenantID string, i
 		Model(&model.AutomationTemplate{}).
 		Where("id = ? AND tenant_id = ? AND deleted_at IS NULL", id, tenantID).
 		Update("deleted_at", now).Error
+}
+
+// =========================================================================
+// Chat (proxy to AI service)
+// =========================================================================
+
+// OpenClawChatRequest represents a chat request from the frontend.
+type OpenClawChatRequest struct {
+	Message        string                 `json:"message"`
+	ConversationID string                 `json:"conversationId,omitempty"`
+	Context        map[string]interface{} `json:"context,omitempty"`
+}
+
+// OpenClawChatResponse represents a chat response matching frontend expectations.
+type OpenClawChatResponse struct {
+	ID          string   `json:"id"`
+	Role        string   `json:"role"`
+	Content     string   `json:"content"`
+	Suggestions []string `json:"suggestions,omitempty"`
+	Actions     []any    `json:"actions,omitempty"`
+}
+
+// HandleChat proxies chat requests to the AI service.
+func (s *OpenClawService) HandleChat(ctx context.Context, req *OpenClawChatRequest) (*OpenClawChatResponse, error) {
+	payload := map[string]interface{}{
+		"session_id": req.ConversationID,
+		"message":    req.Message,
+	}
+	if req.Context != nil {
+		payload["context"] = req.Context
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", s.aiServiceURL+"/api/v1/chat", bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("AI request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+
+	// Parse the AI service response (which uses reply/sources/finish format)
+	var aiResult struct {
+		Reply   string   `json:"reply"`
+		Sources []string `json:"sources"`
+		Finish  bool     `json:"finish"`
+	}
+	if err := json.Unmarshal(body, &aiResult); err != nil {
+		return nil, fmt.Errorf("decode: %w", err)
+	}
+
+	// Convert to frontend-compatible format
+	return &OpenClawChatResponse{
+		ID:          fmt.Sprintf("msg-%d", time.Now().UnixMilli()),
+		Role:        "assistant",
+		Content:     aiResult.Reply,
+		Suggestions: aiResult.Sources,
+	}, nil
+}
+
+// =========================================================================
+// Analyze Alerts
+// =========================================================================
+
+// AnalyzeAlerts returns alert analysis for the given period.
+func (s *OpenClawService) AnalyzeAlerts(ctx context.Context, tenantID string, days int) (map[string]interface{}, error) {
+	var alerts []map[string]interface{}
+	q := s.db.WithContext(ctx).
+		Table("alerts").
+		Select("level, status, location, created_at").
+		Where("tenant_id = ? AND deleted_at IS NULL AND created_at >= ?", tenantID, time.Now().AddDate(0, 0, -days)).
+		Order("created_at DESC")
+
+	if err := q.Find(&alerts).Error; err != nil {
+		return nil, err
+	}
+
+	total := len(alerts)
+	byLevel := make(map[string]int)
+	byStatus := make(map[string]int)
+	byLocation := make(map[string]int)
+
+	for _, a := range alerts {
+		if level, ok := a["level"].(string); ok {
+			byLevel[level]++
+		}
+		if status, ok := a["status"].(string); ok {
+			byStatus[status]++
+		}
+		if loc, ok := a["location"].(string); ok && loc != "" {
+			byLocation[loc]++
+		}
+	}
+
+	highRisk := make([]map[string]interface{}, 0)
+	for loc, count := range byLocation {
+		highRisk = append(highRisk, map[string]interface{}{"location": loc, "count": count})
+	}
+
+	levelArr := make([]map[string]interface{}, 0, len(byLevel))
+	for level, count := range byLevel {
+		levelArr = append(levelArr, map[string]interface{}{"level": level, "count": count})
+	}
+
+	statusArr := make([]map[string]interface{}, 0, len(byStatus))
+	for status, count := range byStatus {
+		statusArr = append(statusArr, map[string]interface{}{"status": status, "count": count})
+	}
+
+	return map[string]interface{}{
+		"total":               total,
+		"by_level":            levelArr,
+		"by_status":           statusArr,
+		"high_risk_locations": highRisk,
+		"period_days":         days,
+	}, nil
+}
+
+// =========================================================================
+// Devices Status
+// =========================================================================
+
+// GetDevicesStatus returns device/stream status.
+func (s *OpenClawService) GetDevicesStatus(ctx context.Context, tenantID string) (map[string]interface{}, error) {
+	var streams []map[string]interface{}
+	q := s.db.WithContext(ctx).
+		Table("streams").
+		Select("id, name, status, location").
+		Where("tenant_id = ? AND deleted_at IS NULL", tenantID)
+
+	if err := q.Find(&streams).Error; err != nil {
+		return nil, err
+	}
+
+	total := len(streams)
+	online := 0
+	offline := 0
+	warning := 0
+
+	for _, s := range streams {
+		switch s["status"] {
+		case "online":
+			online++
+		case "offline":
+			offline++
+		default:
+			warning++
+		}
+	}
+
+	return map[string]interface{}{
+		"stream_stats": map[string]interface{}{
+			"total":   total,
+			"online":  online,
+			"offline": offline,
+			"warning": warning,
+		},
+		"streams": streams,
+	}, nil
+}
+
+// =========================================================================
+// Detection Overview
+// =========================================================================
+
+// GetDetectionOverview returns today's detection statistics.
+func (s *OpenClawService) GetDetectionOverview(ctx context.Context, tenantID string) (map[string]interface{}, error) {
+	var detections []map[string]interface{}
+	today := time.Now().Truncate(24 * time.Hour)
+	q := s.db.WithContext(ctx).
+		Table("yolo_detections").
+		Select("class_name, confidence, severity, created_at").
+		Where("tenant_id = ? AND deleted_at IS NULL AND created_at >= ?", tenantID, today)
+
+	if err := q.Find(&detections).Error; err != nil {
+		return nil, err
+	}
+
+	total := len(detections)
+	bySeverity := make(map[string]int)
+	for _, d := range detections {
+		if sev, ok := d["severity"].(string); ok && sev != "" {
+			bySeverity[sev]++
+		}
+	}
+
+	severityArr := make([]map[string]interface{}, 0, len(bySeverity))
+	for sev, count := range bySeverity {
+		severityArr = append(severityArr, map[string]interface{}{"severity": sev, "count": count})
+	}
+
+	return map[string]interface{}{
+		"total_detections": total,
+		"by_severity":      severityArr,
+		"period":           "today",
+	}, nil
 }

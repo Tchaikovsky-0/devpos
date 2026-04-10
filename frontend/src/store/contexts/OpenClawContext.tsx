@@ -201,7 +201,7 @@ export function OpenClawProvider({ children }: { children: ReactNode }) {
         alerts: '告警处置',
         tasks: '任务协同',
         assets: '资产设备',
-        openclaw: '智能协同',
+        openclaw: 'AI 助手',
         system: '系统管理',
       };
       parts.push(`当前在 ${moduleNames[currentModule] || currentModule}`);

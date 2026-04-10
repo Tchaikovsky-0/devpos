@@ -56,7 +56,7 @@ export const OpenClawPanel: React.FC<OpenClawPanelProps> = memo(
     isOpen,
     onClose,
     suggestions = [],
-    title = '智能协同',
+    title = 'AI 助手',
     subtitle = '让画面、告警、资料和任务在同一条链路里完成理解与执行',
     placeholder = '输入任务、问题或指令',
     className,

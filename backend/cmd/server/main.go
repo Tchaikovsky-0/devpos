@@ -15,7 +15,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"xunjianbao-backend/internal/config"
 	"xunjianbao-backend/internal/handler"
 	"xunjianbao-backend/internal/middleware"
 	"xunjianbao-backend/internal/model"
@@ -165,8 +164,7 @@ func main() {
 	go wsHub.Run()
 
 	// 10. 设置路由
-	cfg := config.Load()
-	r := router.NewRouter(engine, db, cfg, wsHub)
+	r := router.NewRouter(engine, db)
 	r.Setup()
 
 	// 11. 启动服务

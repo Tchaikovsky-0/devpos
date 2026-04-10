@@ -158,7 +158,7 @@ export const Layout = () => {
           isOpen={isPanelOpen}
           onClose={() => setIsPanelOpen(false)}
           suggestions={quickSuggestions}
-          title={`智能协同 · ${activeModule.label}`}
+          title={`AI 助手 · ${activeModule.label}`}
           subtitle={contextSummary}
           placeholder="输入任务、问题或希望它代为串联的对象"
         />

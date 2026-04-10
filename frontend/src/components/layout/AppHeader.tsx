@@ -77,14 +77,14 @@ export function AppHeader({
           <ShortcutHint shortcut="⌘P" size="xs" />
         </button>
 
-        {/* 打开智能协同 - 紧凑型按钮 */}
+        {/* 打开 AI 助手 - 紧凑型按钮 */}
         <button
           type="button"
           onClick={onOpenAIPanel}
           className="inline-flex items-center gap-1.5 rounded-md bg-bg-elevated px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
         >
           <Bot className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">AI 协同</span>
+          <span className="hidden sm:inline">AI 助手</span>
           <ShortcutHint shortcut="⌘K" size="xs" />
         </button>
       </div>

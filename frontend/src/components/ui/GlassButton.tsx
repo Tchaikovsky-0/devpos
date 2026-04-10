@@ -59,11 +59,11 @@ const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
 
     // 变体样式
     const variantStyles = {
-      primary: 'bg-[#3b82f6] text-white border border-[#3b82f6] hover:bg-[#2563eb] hover:border-[#2563eb] shadow-[0_0_20px_rgba(59,130,246,0.3)]',
-      secondary: 'bg-[rgba(255,255,255,0.06)] text-[#f8fafc] border border-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.1)] hover:border-[rgba(255,255,255,0.15)]',
-      ghost: 'bg-transparent text-[#94a3b8] border border-transparent hover:bg-[rgba(255,255,255,0.04)] hover:text-[#f8fafc]',
-      danger: 'bg-[rgba(239,68,68,0.15)] text-[#ef4444] border border-[rgba(239,68,68,0.3)] hover:bg-[rgba(239,68,68,0.25)] hover:border-[rgba(239,68,68,0.4)] shadow-[0_0_20px_rgba(239,68,68,0.2)]',
-      success: 'bg-[rgba(16,185,129,0.15)] text-[#10b981] border border-[rgba(16,185,129,0.3)] hover:bg-[rgba(16,185,129,0.25)] hover:border-[rgba(16,185,129,0.4)] shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+      primary: 'bg-blue-600 text-white border border-blue-500 hover:bg-blue-700 hover:border-blue-600 shadow-lg shadow-blue-500/30',
+      secondary: 'bg-white/10 text-white border border-white/20 hover:bg-white/15 hover:border-white/30 backdrop-blur-sm',
+      ghost: 'bg-transparent text-slate-400 border border-transparent hover:bg-white/5 hover:text-white',
+      danger: 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 hover:border-red-500/40',
+      success: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:border-emerald-500/40',
     };
 
     // 尺寸样式

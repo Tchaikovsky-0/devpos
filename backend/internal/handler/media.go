@@ -26,11 +26,6 @@ func NewMediaHandler(s *service.MediaService) *MediaHandler {
 	return &MediaHandler{mediaService: s}
 }
 
-// ---------------------------------------------------------------------------
-// List / Get
-// ---------------------------------------------------------------------------
-
-// List returns paginated media files.
 func (h *MediaHandler) List(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	p := pagination.Parse(c)
@@ -59,7 +54,6 @@ func (h *MediaHandler) List(c *gin.Context) {
 	pagination.PageOK(c, files, total, p)
 }
 
-// ListTrash returns paginated trashed files.
 func (h *MediaHandler) ListTrash(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	p := pagination.Parse(c)
@@ -73,7 +67,6 @@ func (h *MediaHandler) ListTrash(c *gin.Context) {
 	pagination.PageOK(c, files, total, p)
 }
 
-// GetByID returns a single media file's info.
 func (h *MediaHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -87,11 +80,6 @@ func (h *MediaHandler) GetByID(c *gin.Context) {
 	response.Success(c, file)
 }
 
-// ---------------------------------------------------------------------------
-// Upload (Hardened)
-// ---------------------------------------------------------------------------
-
-// Upload handles single or multi-file upload with validation.
 func (h *MediaHandler) Upload(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -102,7 +90,6 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	// Accept both "file" and "files" field names
 	files := form.File["file"]
 	if len(files) == 0 {
 		files = form.File["files"]
@@ -127,13 +114,11 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 
 	var uploaded []interface{}
 	for _, file := range files {
-		// Validate file size
 		if err := service.ValidateFileSize(file.Size); err != nil {
 			response.BadRequest(c, "file size exceeds maximum limit: "+file.Filename)
 			return
 		}
 
-		// Validate file type via magic bytes
 		if _, err := service.ValidateFileType(file); err != nil {
 			response.BadRequest(c, "unsupported file type: "+file.Header.Get("Content-Type"))
 			return
@@ -159,11 +144,6 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 	response.Created(c, uploaded)
 }
 
-// ---------------------------------------------------------------------------
-// Update
-// ---------------------------------------------------------------------------
-
-// Update modifies media file metadata.
 func (h *MediaHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -187,11 +167,6 @@ func (h *MediaHandler) Update(c *gin.Context) {
 	response.Success(c, media)
 }
 
-// ---------------------------------------------------------------------------
-// Delete
-// ---------------------------------------------------------------------------
-
-// Delete permanently removes a media file.
 func (h *MediaHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -208,11 +183,6 @@ func (h *MediaHandler) Delete(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
-// ---------------------------------------------------------------------------
-// Download (Hardened with Range support)
-// ---------------------------------------------------------------------------
-
-// Download serves a media file with proper headers and Range support.
 func (h *MediaHandler) Download(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -233,7 +203,6 @@ func (h *MediaHandler) Download(c *gin.Context) {
 		return
 	}
 
-	// Set content type
 	if mimeType == "" {
 		mimeType = mime.TypeByExtension(filepath.Ext(originalName))
 		if mimeType == "" {
@@ -245,7 +214,6 @@ func (h *MediaHandler) Download(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, sanitizeHeaderValue(originalName)))
 	c.Header("Accept-Ranges", "bytes")
 
-	// Use http.ServeContent for Range request support
 	f, err := os.Open(filePath)
 	if err != nil {
 		response.InternalError(c, "failed to open file")
@@ -256,11 +224,15 @@ func (h *MediaHandler) Download(c *gin.Context) {
 	http.ServeContent(c.Writer, c.Request, originalName, fileInfo.ModTime(), f)
 }
 
-// ServeFile serves a file by its storage path (for inline viewing).
 func (h *MediaHandler) ServeFile(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+	if tenantID == "" {
+		response.Unauthorized(c, "authentication required")
+		return
+	}
+
 	filePath := c.Param("filepath")
 
-	// Security: prevent path traversal
 	if strings.Contains(filePath, "..") {
 		response.Forbidden(c, "invalid file path")
 		return
@@ -268,12 +240,9 @@ func (h *MediaHandler) ServeFile(c *gin.Context) {
 
 	storagePath := h.mediaService.GetStoragePath()
 
-	// filePath is like "/media/tenant_xxx/..." but storage already includes "media"
-	// so we need to strip the "/media" prefix before joining
 	cleanPath := strings.TrimPrefix(filePath, "/media/")
-	fullPath := filepath.Join(storagePath, "media", cleanPath)
+	fullPath := filepath.Join(storagePath, "media", tenantID, cleanPath)
 
-	// Verify the resolved path is still under the storage directory
 	absStorage, _ := filepath.Abs(filepath.Join(storagePath, "media"))
 	absFile, _ := filepath.Abs(fullPath)
 	if !strings.HasPrefix(absFile, absStorage) {
@@ -291,7 +260,6 @@ func (h *MediaHandler) ServeFile(c *gin.Context) {
 		return
 	}
 
-	// Serve with Range support
 	f, err := os.Open(fullPath)
 	if err != nil {
 		response.InternalError(c, "failed to open file")
@@ -299,7 +267,6 @@ func (h *MediaHandler) ServeFile(c *gin.Context) {
 	}
 	defer f.Close()
 
-	// Detect content type
 	ct := mime.TypeByExtension(filepath.Ext(fullPath))
 	if ct == "" {
 		ct = "application/octet-stream"
@@ -310,15 +277,9 @@ func (h *MediaHandler) ServeFile(c *gin.Context) {
 	http.ServeContent(c.Writer, c.Request, filepath.Base(fullPath), fileInfo.ModTime(), f)
 }
 
-// ---------------------------------------------------------------------------
-// Folders
-// ---------------------------------------------------------------------------
-
-// ListFolders returns folders for a given parent.
 func (h *MediaHandler) ListFolders(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
-	// If all=true, return every folder (needed for breadcrumb navigation)
 	if c.Query("all") == "true" || c.Query("all") == "1" {
 		folders, err := h.mediaService.ListAllFolders(tenantID)
 		if err != nil {
@@ -345,7 +306,6 @@ func (h *MediaHandler) ListFolders(c *gin.Context) {
 	response.Success(c, folders)
 }
 
-// CreateFolder creates a new media folder.
 func (h *MediaHandler) CreateFolder(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -363,6 +323,8 @@ func (h *MediaHandler) CreateFolder(c *gin.Context) {
 			response.BadRequest(c, err.Error())
 		case service.ErrFolderDepth:
 			response.BadRequest(c, err.Error())
+		case service.ErrForbidden:
+			response.Forbidden(c, "no permission to create folder in this location")
 		default:
 			response.InternalError(c, "failed to create folder")
 		}
@@ -372,7 +334,6 @@ func (h *MediaHandler) CreateFolder(c *gin.Context) {
 	response.Created(c, folder)
 }
 
-// UpdateFolder updates a folder's metadata.
 func (h *MediaHandler) UpdateFolder(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -403,7 +364,6 @@ func (h *MediaHandler) UpdateFolder(c *gin.Context) {
 	response.Success(c, folder)
 }
 
-// DeleteFolder deletes a folder (must be empty).
 func (h *MediaHandler) DeleteFolder(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -423,11 +383,6 @@ func (h *MediaHandler) DeleteFolder(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
-// ---------------------------------------------------------------------------
-// Storage
-// ---------------------------------------------------------------------------
-
-// StorageInfo returns storage usage statistics.
 func (h *MediaHandler) StorageInfo(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -440,7 +395,6 @@ func (h *MediaHandler) StorageInfo(c *gin.Context) {
 	response.Success(c, info)
 }
 
-// StorageUsage returns structured storage usage.
 func (h *MediaHandler) StorageUsage(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -453,11 +407,6 @@ func (h *MediaHandler) StorageUsage(c *gin.Context) {
 	response.Success(c, info)
 }
 
-// ---------------------------------------------------------------------------
-// Star / Trash
-// ---------------------------------------------------------------------------
-
-// ToggleStar toggles the starred status.
 func (h *MediaHandler) ToggleStar(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -475,7 +424,6 @@ func (h *MediaHandler) ToggleStar(c *gin.Context) {
 	response.Success(c, media)
 }
 
-// MoveToTrash moves a file to the trash bin.
 func (h *MediaHandler) MoveToTrash(c *gin.Context) {
 	id := c.Param("id")
 	tenantID := c.GetString("tenant_id")
@@ -492,7 +440,6 @@ func (h *MediaHandler) MoveToTrash(c *gin.Context) {
 	response.Success(c, gin.H{"message": "moved to trash"})
 }
 
-// RestoreFromTrash restores files from the trash bin.
 func (h *MediaHandler) RestoreFromTrash(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -514,6 +461,10 @@ func (h *MediaHandler) RestoreFromTrash(c *gin.Context) {
 			response.BadRequest(c, fmt.Sprintf("batch operation exceeds maximum of %d items", maxBatchSize))
 			return
 		}
+		if err == service.ErrQuotaExceeded {
+			response.Forbidden(c, "storage quota exceeded, cannot restore files")
+			return
+		}
 		response.InternalError(c, "failed to restore from trash")
 		return
 	}
@@ -521,7 +472,6 @@ func (h *MediaHandler) RestoreFromTrash(c *gin.Context) {
 	response.Success(c, gin.H{"message": "restored"})
 }
 
-// PermanentDeleteTrash permanently deletes trashed files.
 func (h *MediaHandler) PermanentDeleteTrash(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -550,7 +500,6 @@ func (h *MediaHandler) PermanentDeleteTrash(c *gin.Context) {
 	response.Success(c, gin.H{"message": "permanently deleted"})
 }
 
-// CleanExpiredTrash cleans trash files older than 30 days.
 func (h *MediaHandler) CleanExpiredTrash(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -566,11 +515,6 @@ func (h *MediaHandler) CleanExpiredTrash(c *gin.Context) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// Batch Operations
-// ---------------------------------------------------------------------------
-
-// BatchMove moves multiple files to a target folder.
 func (h *MediaHandler) BatchMove(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -600,7 +544,6 @@ func (h *MediaHandler) BatchMove(c *gin.Context) {
 	response.Success(c, gin.H{"message": "moved"})
 }
 
-// BatchDelete moves multiple files to trash.
 func (h *MediaHandler) BatchDelete(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -629,7 +572,6 @@ func (h *MediaHandler) BatchDelete(c *gin.Context) {
 	response.Success(c, gin.H{"message": "deleted"})
 }
 
-// BatchDedupe removes duplicate media files based on SHA256 hash.
 func (h *MediaHandler) BatchDedupe(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -655,11 +597,24 @@ func (h *MediaHandler) BatchDedupe(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// ---------------------------------------------------------------------------
-// Orphan Files
-// ---------------------------------------------------------------------------
+func (h *MediaHandler) SemanticDedupe(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
 
-// DetectOrphanFiles lists orphan files (physical files without DB records).
+	var req service.SemanticDedupeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.mediaService.SemanticDedupe(tenantID, req)
+	if err != nil {
+		response.InternalError(c, "semantic dedupe failed")
+		return
+	}
+
+	response.Success(c, result)
+}
+
 func (h *MediaHandler) DetectOrphanFiles(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -675,7 +630,6 @@ func (h *MediaHandler) DetectOrphanFiles(c *gin.Context) {
 	})
 }
 
-// CleanOrphanFiles removes orphan files from disk.
 func (h *MediaHandler) CleanOrphanFiles(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -691,11 +645,6 @@ func (h *MediaHandler) CleanOrphanFiles(c *gin.Context) {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// AI Analysis & Report
-// ---------------------------------------------------------------------------
-
-// AnalyzeMedia triggers AI analysis on selected media files.
 func (h *MediaHandler) AnalyzeMedia(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -722,7 +671,6 @@ func (h *MediaHandler) AnalyzeMedia(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// DefectAnalyzeMedia performs AI defect analysis on media files and returns bounding boxes.
 func (h *MediaHandler) DefectAnalyzeMedia(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -748,7 +696,6 @@ func (h *MediaHandler) DefectAnalyzeMedia(c *gin.Context) {
 	response.Success(c, results)
 }
 
-// GenerateReport generates an AI-powered inspection report.
 func (h *MediaHandler) GenerateReport(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 
@@ -770,11 +717,6 @@ func (h *MediaHandler) GenerateReport(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// ---------------------------------------------------------------------------
-// Folder Permission Management
-// ---------------------------------------------------------------------------
-
-// ListAccessibleFolders returns root folders the current user can access.
 func (h *MediaHandler) ListAccessibleFolders(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -788,7 +730,6 @@ func (h *MediaHandler) ListAccessibleFolders(c *gin.Context) {
 	response.Success(c, folders)
 }
 
-// ListFolderPermissions returns all permissions for a folder.
 func (h *MediaHandler) ListFolderPermissions(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -798,7 +739,6 @@ func (h *MediaHandler) ListFolderPermissions(c *gin.Context) {
 		return
 	}
 
-	// Check access: must have at least read permission
 	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "read")
 	if !canAccess {
 		response.Forbidden(c, "no access to this folder")
@@ -814,7 +754,6 @@ func (h *MediaHandler) ListFolderPermissions(c *gin.Context) {
 	response.Success(c, perms)
 }
 
-// GrantFolderPermission grants a user access to a folder.
 func (h *MediaHandler) GrantFolderPermission(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -824,7 +763,6 @@ func (h *MediaHandler) GrantFolderPermission(c *gin.Context) {
 		return
 	}
 
-	// Check access: must have admin permission to grant
 	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "admin")
 	if !canAccess {
 		response.Forbidden(c, "no permission to manage this folder")
@@ -849,7 +787,6 @@ func (h *MediaHandler) GrantFolderPermission(c *gin.Context) {
 	response.Success(c, perm)
 }
 
-// RevokeFolderPermission removes a user's access to a folder.
 func (h *MediaHandler) RevokeFolderPermission(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -865,14 +802,12 @@ func (h *MediaHandler) RevokeFolderPermission(c *gin.Context) {
 		return
 	}
 
-	// Check access: must have admin permission
 	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "admin")
 	if !canAccess {
 		response.Forbidden(c, "no permission to manage this folder")
 		return
 	}
 
-	// Cannot revoke own admin permission
 	if targetUserID == userID {
 		response.BadRequest(c, "cannot revoke your own permission")
 		return
@@ -886,7 +821,6 @@ func (h *MediaHandler) RevokeFolderPermission(c *gin.Context) {
 	response.Success(c, gin.H{"message": "permission revoked"})
 }
 
-// UpdateFolderPermission updates a user's permission level for a folder.
 func (h *MediaHandler) UpdateFolderPermission(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
@@ -902,7 +836,6 @@ func (h *MediaHandler) UpdateFolderPermission(c *gin.Context) {
 		return
 	}
 
-	// Check access: must have admin permission
 	canAccess, _ := h.mediaService.CanAccessFolder(tenantID, userID, folderID, "admin")
 	if !canAccess {
 		response.Forbidden(c, "no permission to manage this folder")
@@ -929,13 +862,11 @@ func (h *MediaHandler) UpdateFolderPermission(c *gin.Context) {
 	response.Success(c, gin.H{"message": "permission updated"})
 }
 
-// SetFolderPublic sets whether a folder is public or private.
 func (h *MediaHandler) SetFolderPublic(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
 	userID := c.GetUint("user_id")
 	folderID := c.Param("id")
 
-	// Check access: must have admin permission
 	folderIDUint, err := service.ParseUint(folderID)
 	if err != nil {
 		response.BadRequest(c, "invalid folder id")
@@ -968,10 +899,6 @@ func (h *MediaHandler) SetFolderPublic(c *gin.Context) {
 	response.Success(c, gin.H{"message": "folder visibility updated"})
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 func formatBytes(b int64) string {
 	const unit = 1024
 	if b < unit {
@@ -996,7 +923,6 @@ func getAllowedTypesList() []string {
 }
 
 func sanitizeHeaderValue(s string) string {
-	// Remove characters that could cause header injection
 	s = strings.ReplaceAll(s, "\"", "")
 	s = strings.ReplaceAll(s, "\r", "")
 	s = strings.ReplaceAll(s, "\n", "")

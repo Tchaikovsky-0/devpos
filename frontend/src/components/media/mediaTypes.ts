@@ -14,4 +14,6 @@ export interface UploadTask {
   file: File;
   progress: 'pending' | 'uploading' | 'done' | 'error';
   errorMsg?: string;
+  progressPercent: number;
+  folderId: number | null;
 }

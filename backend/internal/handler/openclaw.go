@@ -268,3 +268,98 @@ func (h *OpenClawHandler) DeleteTemplate(c *gin.Context) {
 
 	response.Success(c, nil)
 }
+
+// ============================================================================
+// Health
+// ============================================================================
+
+// Health GET /openclaw/health
+func (h *OpenClawHandler) Health(c *gin.Context) {
+	available := h.svc.CheckHealth()
+	status := "ok"
+	if !available {
+		status = "unavailable"
+	}
+	response.Success(c, gin.H{
+		"status": status,
+	})
+}
+
+// ============================================================================
+// Chat
+// ============================================================================
+
+// Chat POST /openclaw/chat
+func (h *OpenClawHandler) Chat(c *gin.Context) {
+	tenantID := h.getTenantID(c)
+	var req service.OpenClawChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	if req.Context == nil {
+		req.Context = make(map[string]interface{})
+	}
+	req.Context["tenant_id"] = tenantID
+
+	result, err := h.svc.HandleChat(c.Request.Context(), &req)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, result)
+}
+
+// ============================================================================
+// Analyze
+// ============================================================================
+
+// AnalyzeAlerts GET /openclaw/analyze/alerts
+func (h *OpenClawHandler) AnalyzeAlerts(c *gin.Context) {
+	tenantID := h.getTenantID(c)
+	days, _ := strconv.Atoi(c.DefaultQuery("days", "7"))
+
+	result, err := h.svc.AnalyzeAlerts(c.Request.Context(), tenantID, days)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, result)
+}
+
+// ============================================================================
+// Devices
+// ============================================================================
+
+// GetDevicesStatus GET /openclaw/devices/status
+func (h *OpenClawHandler) GetDevicesStatus(c *gin.Context) {
+	tenantID := h.getTenantID(c)
+
+	result, err := h.svc.GetDevicesStatus(c.Request.Context(), tenantID)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, result)
+}
+
+// ============================================================================
+// Detection
+// ============================================================================
+
+// GetDetectionOverview GET /openclaw/detection/overview
+func (h *OpenClawHandler) GetDetectionOverview(c *gin.Context) {
+	tenantID := h.getTenantID(c)
+
+	result, err := h.svc.GetDetectionOverview(c.Request.Context(), tenantID)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, result)
+}

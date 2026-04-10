@@ -1,4 +1,128 @@
-package service
+#!/usr/bin/env python3
+"""Write fixed media library backend files to server via SSH."""
+
+import subprocess
+import sys
+
+SSH = "sshpass -p 'Tchaikovsky_0' ssh -o StrictHostKeyChecking=no ubuntu@101.43.35.139"
+SCP = "sshpass -p 'Tchaikovsky_0' scp -o StrictHostKeyChecking=no"
+
+def run(cmd):
+    print(f"  $ {cmd[:120]}...")
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"  ERROR: {r.stderr[:500]}")
+        sys.exit(1)
+    return r.stdout
+
+def write_remote(remote_path, content):
+    local_tmp = f"/tmp/_deploy_{remote_path.replace('/', '_')}"
+    with open(local_tmp, "w") as f:
+        f.write(content)
+    run(f"{SCP} {local_tmp} ubuntu@101.43.35.139:{remote_path}")
+    run(f"rm -f {local_tmp}")
+    print(f"  Written: {remote_path}")
+
+# ===========================================================================
+# 1. model/media.go
+# ===========================================================================
+MODEL_MEDIA = r'''package model
+
+import "time"
+
+// Media 表示上传的媒体文件
+type Media struct {
+	ID           uint       `json:"id" gorm:"primaryKey"`
+	TenantID     string     `json:"tenant_id" gorm:"size:64;index"`
+	Name         string     `json:"name" gorm:"size:255;not null"`
+	Filename     string     `json:"filename" gorm:"size:255;not null"`
+	OriginalName string     `json:"original_name" gorm:"size:255;not null"`
+	MimeType     string     `json:"mime_type" gorm:"size:128"`
+	Size         int64      `json:"size"`
+	Path         string     `json:"-" gorm:"size:512"`
+	URL          string     `json:"url" gorm:"size:512"`
+	FolderID     *uint      `json:"folder_id" gorm:"index"`
+	Type         string     `json:"type" gorm:"size:32"`
+	UserID       *uint      `json:"user_id"`
+	Description   string     `json:"description" gorm:"type:text"`
+	Starred      bool       `json:"starred" gorm:"default:false"`
+	Sha256Hash   string     `json:"sha256_hash" gorm:"size:64;index"`
+	TrashedAt    *time.Time `json:"trashed_at" gorm:"index"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at" gorm:"index"`
+}
+
+func (Media) TableName() string {
+	return "media"
+}
+
+// MediaFolder 表示媒体文件夹
+type MediaFolder struct {
+	ID        uint           `json:"id" gorm:"primaryKey"`
+	TenantID  string         `json:"tenant_id" gorm:"size:64;index"`
+	Name      string         `json:"name" gorm:"size:255;not null"`
+	ParentID  *uint          `json:"parent_id" gorm:"index"`
+	UserID    uint           `json:"user_id" gorm:"not null"`
+	IsPrivate bool           `json:"is_private" gorm:"default:true"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt *time.Time     `json:"deleted_at" gorm:"index"`
+
+	Permissions []FolderPermission `gorm:"foreignKey:FolderID"`
+}
+
+func (MediaFolder) TableName() string {
+	return "media_folders"
+}
+
+// FolderPermission 表示用户对文件夹的访问权限
+type FolderPermission struct {
+	ID         uint       `json:"id" gorm:"primaryKey"`
+	TenantID   string     `json:"tenant_id" gorm:"size:64;index"`
+	FolderID   uint       `json:"folder_id" gorm:"index;not null"`
+	UserID     uint       `json:"user_id" gorm:"index;not null"`
+	Permission string     `json:"permission" gorm:"size:32;default:read"`
+	GrantedBy  uint       `json:"granted_by" gorm:"not null"`
+	ExpiresAt  *time.Time `json:"expires_at" gorm:"index"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+
+	Folder MediaFolder `gorm:"foreignKey:FolderID"`
+	User   User        `gorm:"foreignKey:UserID"`
+}
+
+func (FolderPermission) TableName() string {
+	return "folder_permissions"
+}
+
+// SemanticDedupeRequest 语义去重请求
+type SemanticDedupeRequest struct {
+	FolderID   *uint    `json:"folder_id"`
+	Threshold  float64  `json:"threshold"`
+	MediaTypes []string `json:"media_types"`
+}
+
+// SemanticDedupeResult 语义去重结果
+type SemanticDedupeResult struct {
+	TotalScanned int           `json:"total_scanned"`
+	GroupsFound  int           `json:"groups_found"`
+	TotalRemoved int           `json:"total_removed"`
+	Groups       []DedupeGroup `json:"groups"`
+}
+
+// DedupeGroup 表示一组重复文件
+type DedupeGroup struct {
+	Hash       string `json:"hash"`
+	KeptID     uint   `json:"kept_id"`
+	RemovedIDs []uint `json:"removed_ids"`
+}
+'''
+
+# ===========================================================================
+# 2. service/media.go (complete fixed version)
+# ===========================================================================
+SERVICE_MEDIA = r'''package service
 
 import (
 	"crypto/rand"
@@ -270,9 +394,7 @@ func (s *MediaService) UploadFile(tenantID string, userID uint, file *multipart.
 			return nil, fmt.Errorf("failed to lock tenant config: %w", err)
 		}
 	}
-	quotaBytes := config.StorageQuota
-	usedBytes := config.StorageUsed
-	if usedBytes+file.Size > quotaBytes {
+	if config.StorageUsed+file.Size > config.StorageQuota {
 		return nil, ErrQuotaExceeded
 	}
 
@@ -345,7 +467,7 @@ func (s *MediaService) UploadFile(tenantID string, userID uint, file *multipart.
 
 	if err := s.db.Model(&model.TenantConfig{}).
 		Where("tenant_id = ?", tenantID).
-		UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used + CAST(? AS SIGNED), 0)", written)).Error; err != nil {
+		UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used + ?, 0)", written)).Error; err != nil {
 		os.Remove(finalPath)
 		s.db.Unscoped().Delete(media)
 		return nil, fmt.Errorf("failed to update storage usage: %w", err)
@@ -365,7 +487,7 @@ func (s *MediaService) DeleteFile(tenantID, id string) error {
 		}
 		if err := tx.Model(&model.TenantConfig{}).
 			Where("tenant_id = ?", tenantID).
-			UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used - CAST(? AS SIGNED), 0)", media.Size)).Error; err != nil {
+			UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used - ?, 0)", media.Size)).Error; err != nil {
 			return fmt.Errorf("failed to update storage usage: %w", err)
 		}
 		if media.Path != "" {
@@ -442,7 +564,7 @@ func (s *MediaService) PermanentDeleteTrash(tenantID string, ids []uint) error {
 		if totalSize > 0 {
 			if err := tx.Model(&model.TenantConfig{}).
 				Where("tenant_id = ?", tenantID).
-				UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used - CAST(? AS SIGNED), 0)", totalSize)).Error; err != nil {
+				UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used - ?, 0)", totalSize)).Error; err != nil {
 				return fmt.Errorf("failed to update storage usage: %w", err)
 			}
 		}
@@ -482,7 +604,7 @@ func (s *MediaService) CleanExpiredTrash(tenantID string) (int64, error) {
 		if totalSize > 0 {
 			if err := tx.Model(&model.TenantConfig{}).
 				Where("tenant_id = ?", tenantID).
-				UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used - CAST(? AS SIGNED), 0)", totalSize)).Error; err != nil {
+				UpdateColumn("storage_used", gorm.Expr("GREATEST(storage_used - ?, 0)", totalSize)).Error; err != nil {
 				return err
 			}
 		}
@@ -577,25 +699,6 @@ func (s *MediaService) BatchDelete(tenantID string, ids []uint) error {
 	})
 }
 
-type DedupeGroup struct {
-	Hash       string `json:"hash"`
-	KeptID     uint   `json:"kept_id"`
-	RemovedIDs []uint `json:"removed_ids"`
-}
-
-type SemanticDedupeRequest struct {
-	Threshold   float64  `json:"threshold"`
-	FolderID    *uint    `json:"folder_id"`
-	MediaTypes  []string `json:"media_types"`
-}
-
-type SemanticDedupeResult struct {
-	TotalScanned int           `json:"total_scanned"`
-	TotalRemoved int           `json:"total_removed"`
-	GroupsFound  int           `json:"groups_found"`
-	Groups       []DedupeGroup `json:"groups"`
-}
-
 type DedupeResult struct {
 	Kept    int           `json:"kept"`
 	Removed int           `json:"removed"`
@@ -643,7 +746,7 @@ func (s *MediaService) BatchDedupe(tenantID string, ids []uint) (*DedupeResult, 
 	if len(duplicateIDs) > 0 {
 		now := time.Now()
 		if err := s.db.Model(&model.Media{}).
-			Where("id IN ? AND tenant_id = ?", duplicateIDs, tenantID).
+			Where("id IN ?", duplicateIDs).
 			Update("trashed_at", &now).Error; err != nil {
 			return nil, fmt.Errorf("failed to trash duplicates: %w", err)
 		}
@@ -651,7 +754,7 @@ func (s *MediaService) BatchDedupe(tenantID string, ids []uint) (*DedupeResult, 
 	return result, nil
 }
 
-func (s *MediaService) SemanticDedupe(tenantID string, req SemanticDedupeRequest) (*SemanticDedupeResult, error) {
+func (s *MediaService) SemanticDedupe(tenantID string, req model.SemanticDedupeRequest) (*model.SemanticDedupeResult, error) {
 	threshold := req.Threshold
 	if threshold <= 0 {
 		threshold = 0.85
@@ -668,12 +771,14 @@ func (s *MediaService) SemanticDedupe(tenantID string, req SemanticDedupeRequest
 		return nil, fmt.Errorf("failed to fetch images: %w", err)
 	}
 	if len(images) == 0 {
-		return &SemanticDedupeResult{Groups: make([]DedupeGroup, 0)}, nil
+		return &model.SemanticDedupeResult{Groups: make([]DedupeGroup, 0)}, nil
 	}
 
 	type phashEntry struct {
-		Media model.Media
-		Hash  uint64
+		Media  model.Media
+		Hash   uint64
+		Width  int
+		Height int
 	}
 	var entries []phashEntry
 	for _, img := range images {
@@ -695,11 +800,10 @@ func (s *MediaService) SemanticDedupe(tenantID string, req SemanticDedupeRequest
 		if err != nil {
 			continue
 		}
-		_ = cfg
-		entries = append(entries, phashEntry{Media: img, Hash: phash})
+		entries = append(entries, phashEntry{Media: img, Hash: phash, Width: cfg.Width, Height: cfg.Height})
 	}
 
-	result := &SemanticDedupeResult{TotalScanned: len(entries), Groups: make([]DedupeGroup, 0)}
+	result := &model.SemanticDedupeResult{TotalScanned: len(entries), Groups: make([]DedupeGroup, 0)}
 	used := make(map[int]bool)
 	for i := 0; i < len(entries); i++ {
 		if used[i] {
@@ -876,6 +980,7 @@ func (s *MediaService) CreateFolder(tenantID string, userID uint, req CreateMedi
 		return nil, fmt.Errorf("failed to create folder: %w", err)
 	}
 	perm := &model.FolderPermission{
+		TenantID:   tenantID,
 		FolderID:   folder.ID,
 		UserID:     userID,
 		Permission: "admin",
@@ -1511,106 +1616,4 @@ func (s *MediaService) ListAccessibleSubFolders(tenantID string, userID uint, pa
 	var folders []model.MediaFolder
 	query := `
 		SELECT DISTINCT mf.* FROM media_folders mf
-		LEFT JOIN folder_permissions fp ON mf.id = fp.folder_id AND fp.user_id = ?
-		WHERE mf.tenant_id = ?
-		AND mf.parent_id = ?
-		AND mf.deleted_at IS NULL
-		AND (mf.user_id = ? OR fp.id IS NOT NULL OR mf.is_private = FALSE)
-		ORDER BY mf.name ASC
-	`
-	if err := s.db.Raw(query, userID, tenantID, parentID, userID).Scan(&folders).Error; err != nil {
-		return nil, fmt.Errorf("failed to list accessible sub-folders: %w", err)
-	}
-	return folders, nil
-}
-
-func (s *MediaService) ListFolderPermissions(folderID uint) ([]model.FolderPermission, error) {
-	var perms []model.FolderPermission
-	if err := s.db.Preload("User").Where("folder_id = ?", folderID).Find(&perms).Error; err != nil {
-		return nil, fmt.Errorf("failed to list permissions: %w", err)
-	}
-	return perms, nil
-}
-
-func (s *MediaService) GrantFolderPermission(folderID, userID, grantedBy uint, permission string) (*model.FolderPermission, error) {
-	var existing model.FolderPermission
-	err := s.db.Where("folder_id = ? AND user_id = ?", folderID, userID).First(&existing).Error
-	if err == nil {
-		existing.Permission = permission
-		existing.GrantedBy = grantedBy
-		if err := s.db.Save(&existing).Error; err != nil {
-			return nil, fmt.Errorf("failed to update permission: %w", err)
-		}
-		return &existing, nil
-	}
-	if err != gorm.ErrRecordNotFound {
-		return nil, fmt.Errorf("failed to check existing permission: %w", err)
-	}
-	perm := &model.FolderPermission{
-		FolderID:   folderID,
-		UserID:     userID,
-		Permission: permission,
-		GrantedBy:  grantedBy,
-	}
-	if err := s.db.Create(perm).Error; err != nil {
-		return nil, fmt.Errorf("failed to grant permission: %w", err)
-	}
-	return perm, nil
-}
-
-func (s *MediaService) RevokeFolderPermission(folderID, userID uint) error {
-	result := s.db.Where("folder_id = ? AND user_id = ?", folderID, userID).Delete(&model.FolderPermission{})
-	if result.Error != nil {
-		return fmt.Errorf("failed to revoke permission: %w", result.Error)
-	}
-	return nil
-}
-
-func (s *MediaService) UpdateFolderPermission(folderID, userID uint, permission string) error {
-	result := s.db.Model(&model.FolderPermission{}).
-		Where("folder_id = ? AND user_id = ?", folderID, userID).
-		Update("permission", permission)
-	if result.Error != nil {
-		return fmt.Errorf("failed to update permission: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-func (s *MediaService) SetFolderPublic(tenantID, folderID string, isPublic bool) error {
-	result := s.db.Model(&model.MediaFolder{}).
-		Where("id = ? AND tenant_id = ?", folderID, tenantID).
-		Update("is_private", !isPublic)
-	if result.Error != nil {
-		return fmt.Errorf("failed to set folder public: %w", result.Error)
-	}
-	if result.RowsAffected == 0 {
-		return ErrNotFound
-	}
-	return nil
-}
-
-func (s *MediaService) GetFolderByID(tenantID, folderID string) (*model.MediaFolder, error) {
-	var folder model.MediaFolder
-	if err := s.db.Where("id = ? AND tenant_id = ?", folderID, tenantID).First(&folder).Error; err != nil {
-		return nil, ErrNotFound
-	}
-	return &folder, nil
-}
-
-func (s *MediaService) GetAccessibleChildren(tenantID string, userID uint, parentID uint) ([]model.MediaFolder, error) {
-	var allChildren []model.MediaFolder
-	if err := s.db.Where("tenant_id = ? AND parent_id = ?", tenantID, parentID).Find(&allChildren).Error; err != nil {
-		return nil, err
-	}
-	var accessible []model.MediaFolder
-	for _, child := range allChildren {
-		canAccess, _ := s.CanAccessFolder(tenantID, userID, child.ID, "read")
-		if canAccess {
-			accessible = append(accessible, child)
-		}
-	}
-	return accessible, nil
-}
+		LEFT JOIN folder_permissions fp ON mf.id = fp.folder

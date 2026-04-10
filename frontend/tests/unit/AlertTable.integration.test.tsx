@@ -3,7 +3,8 @@ import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import AlertsWorkspace from '../../src/routes/AlertsWorkspace';
+import { MemoryRouter } from 'react-router-dom';
+import AlertInbox from '../../src/pages/AlertInbox';
 
 // Mock alertsApi
 vi.mock('../../src/store/api/alertsApi', () => ({
@@ -62,15 +63,26 @@ describe('AlertTable Integration', () => {
     vi.restoreAllMocks();
   });
 
-  describe('alerts workspace', () => {
-    it('should render alerts workspace without crashing', () => {
-      const { container } = render(<AlertsWorkspace />, { wrapper: Wrapper });
+  describe('alerts inbox', () => {
+    it('should render alerts inbox without crashing', () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Provider store={createTestStore()}>
+            <AlertInbox />
+          </Provider>
+        </MemoryRouter>
+      );
       expect(container).toBeInTheDocument();
     });
 
-    it('should display alerts workspace title', () => {
-      render(<AlertsWorkspace />, { wrapper: Wrapper });
-      // AlertsWorkspace should render some heading content
+    it('should display alerts inbox content', () => {
+      render(
+        <MemoryRouter>
+          <Provider store={createTestStore()}>
+            <AlertInbox />
+          </Provider>
+        </MemoryRouter>
+      );
       const headings = document.querySelectorAll('h1, h2, h3');
       expect(headings.length).toBeGreaterThan(0);
     });

@@ -286,18 +286,6 @@ func (s *AIService) ChatWithSession(ctx context.Context, req ChatRequest) (map[s
 		payload["context"] = req.Context
 	}
 
-	// Try OpenClaw first, then Python AI
-	if s.openclaw.CheckHealth() {
-		result, err := s.openclaw.Chat(ctx, req.Message, req.Context)
-		if err == nil {
-			return map[string]interface{}{
-				"message":    result,
-				"session_id": req.SessionID,
-				"source":     "openclaw",
-			}, nil
-		}
-	}
-
 	// Fallback to Python AI
 	resp, err := s.doJSON("POST", "/api/v1/chat", payload)
 	if err != nil {
