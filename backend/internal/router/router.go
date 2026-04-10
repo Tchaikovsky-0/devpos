@@ -59,6 +59,7 @@ func (r *Router) Setup() {
 	defectCaseHandler := handler.NewDefectCaseHandler(defectCaseService)
 	openclawHandler := handler.NewOpenClawHandler(openclawService)
 	annotationHandler := handler.NewAnnotationHandler(annotationService)
+	wsHandler := handler.NewWebSocketHandler(wsHub)
 
 	// ============================================================
 	// 中间件
@@ -308,6 +309,9 @@ func (r *Router) Setup() {
 				annotations.PUT("/:id", annotationHandler.UpdateAnnotation)
 				annotations.DELETE("/:id", annotationHandler.DeleteAnnotation)
 			}
+
+			// WebSocket
+			protected.GET("/ws", wsHandler.HandleWebSocket)
 		}
 	}
 

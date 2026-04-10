@@ -278,11 +278,22 @@ class WebSocketService {
 }
 
 // 创建 WebSocket 服务实例
-const WS_BASE_URL = import.meta.env.VITE_WS_URL
-  || import.meta.env.VITE_WS_BASE_URL
-  || 'ws://localhost:8094';
+function resolveWsUrl(): string {
+  // 优先使用环境变量（带 /ws 后缀）
+  const envUrl = import.meta.env.VITE_WS_URL;
+  if (envUrl) {
+    return envUrl.endsWith('/ws') ? envUrl : `${envUrl}/ws`;
+  }
+  // 生产环境：从当前页面协议和主机派生，走 Nginx /api/v1/ws
+  if (typeof window !== 'undefined' && window.location) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/api/v1/ws`;
+  }
+  // 开发环境默认
+  return 'ws://localhost:8094/ws';
+}
 
-export const wsService = new WebSocketService(`${WS_BASE_URL}/ws`);
+export const wsService = new WebSocketService(resolveWsUrl());
 
 // 导出类型别名，方便使用
 export type AlertHandler = (alert: AlertMessage['payload']) => void;
